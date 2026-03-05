@@ -219,7 +219,7 @@
       <li><a href="/how-it-works">How It Works</a></li>
       <li><a href="/about">About</a></li>
       <li id="navAuthItem"><a href="/login">Sign In</a></li>
-      <li><a href="/register" class="btn-signup">Sign Up</a></li>
+      <li id="navSignUpItem"><a href="/register" class="btn-signup">Sign Up</a></li>
     </ul>
   </nav>
 
@@ -278,7 +278,11 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
     fetch('/api/me').then(r => r.json()).then(d => {
-      if (d.user) document.getElementById('navAuthItem').innerHTML = '<a href="/account">My Account</a>';
+      if (d.user) {
+        document.getElementById('navAuthItem').innerHTML = '<a href="/account">My Account</a>';
+        const su = document.getElementById('navSignUpItem');
+        if (su) su.remove();
+      }
     }).catch(() => {});
   </script>
 
