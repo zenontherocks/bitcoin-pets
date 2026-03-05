@@ -1,8 +1,9 @@
 export default {
   async fetch(request, env, ctx) {
-    // Static assets (index.html, etc.) are served automatically by the
-    // Workers Assets binding defined in wrangler.toml. Requests that
-    // don't match a file fall through here.
-    return env.ASSETS.fetch(request);
+    const response = await env.ASSETS.fetch(request);
+    if (response.status === 404) {
+      return env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));
+    }
+    return response;
   },
 };
