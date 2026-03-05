@@ -51,3 +51,11 @@ CREATE TABLE pet_pictures (
   is_primary INTEGER NOT NULL DEFAULT 0,         -- 1 = primary/thumbnail image
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Sessions: server-side login sessions (30-day expiry)
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
