@@ -28,6 +28,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/me' && request.method === 'GET') {
     return handleMe(request, env);
   }
+  if (url.pathname === '/api/pets' && request.method === 'GET') {
+    return handleListPets(request, env, url);
+  }
   if (url.pathname === '/api/pets' && request.method === 'POST') {
     return handleCreatePet(request, env);
   }
@@ -47,6 +50,33 @@ async function getSession(request, env) {
     "SELECT s.user_id, u.username, u.email FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > datetime('now') LIMIT 1"
   ).bind(sessionId).first();
   return session || null;
+}
+
+async function handleListPets(request, env, url) {
+  const species = url.searchParams.get('species') || '';
+  const page    = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+  const limit   = 24;
+  const offset  = (page - 1) * limit;
+
+  const speciesFilter = species ? 'AND p.species = ?' : '';
+  const binds = species
+    ? [limit + 1, offset, species]
+    : [limit + 1, offset];
+
+  const rows = await env.DB.prepare(`
+    SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_btc, p.created_at,
+           pp.url AS photo_url, u.username AS seller
+    FROM pets p
+    LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
+    JOIN users u ON u.id = p.user_id
+    WHERE p.status = 'available' ${speciesFilter}
+    ORDER BY p.created_at DESC
+    LIMIT ? OFFSET ?
+  `).bind(...binds).all();
+
+  const pets = rows.results || [];
+  const hasMore = pets.length > limit;
+  return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page });
 }
 
 async function handleMe(request, env) {
