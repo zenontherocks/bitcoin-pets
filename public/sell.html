@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sell a Pet &mdash; Bitcoin Pets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f7931a;
+      --orange-dark: #d97b0e;
+      --dark: #1a1a1a;
+      --gray: #555;
+      --border: #ddd;
+      --light-gray: #f5f5f5;
+      --white: #fff;
+      --radius: 8px;
+      --red: #e53e3e;
+      --green: #38a169;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--dark);
+      background: var(--light-gray);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--dark);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-decoration: none;
+    }
+
+    .nav-logo span { color: #fff; }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: #ccc;
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius);
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-links a:hover { color: #fff; background: #2e2e2e; }
+    .nav-links .btn-primary { background: var(--orange); color: #fff; font-weight: 600; }
+    .nav-links .btn-primary:hover { background: var(--orange-dark); }
+
+    /* ── Layout ── */
+    main {
+      flex: 1;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2.5rem 1rem 4rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Card / Section ── */
+    .section {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      padding: 1.75rem 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--dark);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem 1.25rem;
+    }
+
+    .form-grid .full { grid-column: 1 / -1; }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    label .opt {
+      font-weight: 400;
+      color: #999;
+      font-size: 0.8rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      color: var(--dark);
+      background: var(--white);
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--orange);
+    }
+
+    textarea { resize: vertical; min-height: 90px; }
+
+    .price-wrap { position: relative; }
+    .price-wrap input { padding-right: 3.5rem; }
+    .price-suffix {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--orange);
+      pointer-events: none;
+    }
+
+    /* ── Alert ── */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+    .alert.visible { display: block; }
+    .alert-error   { background: #fff5f5; color: var(--red);   border: 1px solid #fed7d7; }
+    .alert-success { background: #f0fff4; color: var(--green); border: 1px solid #c6f6d5; }
+
+    /* ── Actions ── */
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 0.5rem;
+    }
+
+    .btn-submit {
+      padding: 0.8rem 2rem;
+      background: var(--orange);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn-submit:hover { background: var(--orange-dark); }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-cancel {
+      padding: 0.8rem 1.5rem;
+      background: none;
+      color: var(--gray);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-cancel:hover { border-color: #bbb; color: var(--dark); }
+
+    /* ── Auth gate ── */
+    #authGate {
+      text-align: center;
+      padding: 4rem 1rem;
+    }
+
+    #authGate h2 { font-size: 1.3rem; margin-bottom: 0.75rem; }
+    #authGate p  { color: var(--gray); margin-bottom: 1.5rem; }
+
+    #authGate .btn-gate {
+      display: inline-block;
+      padding: 0.75rem 2rem;
+      background: var(--orange);
+      color: #fff;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    #authGate .btn-gate:hover { background: var(--orange-dark); }
+
+    footer {
+      background: var(--dark);
+      color: #888;
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 540px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .section { padding: 1.25rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/browse">Browse Pets</a></li>
+      <li><a href="/sell">Sell a Pet</a></li>
+      <li id="navAuthItem"><a href="/login">Sign In</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <!-- Shown while we check auth -->
+    <div id="authGate" style="display:none">
+      <h2>Sign in to create a listing</h2>
+      <p>You need a Bitcoin Pets account to sell a pet.</p>
+      <a href="/login?next=/sell" class="btn-gate">Sign in</a>
+      &nbsp;
+      <a href="/register" class="btn-gate" style="background:#333">Create account</a>
+    </div>
+
+    <!-- The actual form (hidden until auth confirmed) -->
+    <div id="formWrap" style="display:none">
+      <h1>Create a listing</h1>
+      <p class="subtitle">Fill in the details below. Required fields are marked with *.</p>
+
+      <div id="alert" class="alert" role="alert"></div>
+
+      <form id="sellForm" novalidate>
+
+        <div class="section">
+          <div class="section-title">Basic info</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="name">Pet name *</label>
+              <input type="text" id="name" name="name" placeholder="e.g. Buddy" required maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label for="species">Species *</label>
+              <select id="species" name="species" required>
+                <option value="">Select species&hellip;</option>
+                <option value="dog">Dog</option>
+                <option value="cat">Cat</option>
+                <option value="bird">Bird</option>
+                <option value="reptile">Reptile</option>
+                <option value="small animal">Small animal</option>
+                <option value="fish">Fish</option>
+                <option value="horse">Horse</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="breed">Breed <span class="opt">(optional)</span></label>
+              <input type="text" id="breed" name="breed" placeholder="e.g. Golden Retriever" maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label for="gender">Gender <span class="opt">(optional)</span></label>
+              <select id="gender" name="gender">
+                <option value="">Unknown</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="date_of_birth">Date of birth <span class="opt">(optional)</span></label>
+              <input type="date" id="date_of_birth" name="date_of_birth" />
+            </div>
+            <div class="form-group">
+              <label for="color">Color / markings <span class="opt">(optional)</span></label>
+              <input type="text" id="color" name="color" placeholder="e.g. Black and white" maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label for="weight_lbs">Weight (lbs) <span class="opt">(optional)</span></label>
+              <input type="number" id="weight_lbs" name="weight_lbs" placeholder="e.g. 25" min="0" step="0.1" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Description &amp; health</div>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label for="description">Description <span class="opt">(optional)</span></label>
+              <textarea id="description" name="description" placeholder="Tell buyers about this pet's personality, history, and what makes them special&hellip;" maxlength="2000"></textarea>
+            </div>
+            <div class="form-group full">
+              <label for="health_info">Health info <span class="opt">(optional)</span></label>
+              <textarea id="health_info" name="health_info" placeholder="Vet records, known conditions, recent check-ups&hellip;" maxlength="2000"></textarea>
+            </div>
+            <div class="form-group full">
+              <label for="vaccinations">Vaccinations <span class="opt">(optional)</span></label>
+              <input type="text" id="vaccinations" name="vaccinations" placeholder="e.g. Rabies (2024-01), DHPP (2024-01)" maxlength="500" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Registry &amp; identification</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="registry_name">Registry <span class="opt">(optional)</span></label>
+              <input type="text" id="registry_name" name="registry_name" placeholder="e.g. AKC, CFA, TICA" maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label for="registry_number">Registry number <span class="opt">(optional)</span></label>
+              <input type="text" id="registry_number" name="registry_number" placeholder="e.g. DN12345678" maxlength="80" />
+            </div>
+            <div class="form-group">
+              <label for="microchip_id">Microchip ID <span class="opt">(optional)</span></label>
+              <input type="text" id="microchip_id" name="microchip_id" placeholder="15-digit ISO chip number" maxlength="80" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Pricing</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="price_btc">Asking price *</label>
+              <div class="price-wrap">
+                <input type="number" id="price_btc" name="price_btc" placeholder="0.0025" min="0" step="0.00000001" required />
+                <span class="price-suffix">BTC</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-submit" id="submitBtn">Publish listing</button>
+          <a href="/" class="btn-cancel">Cancel</a>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+      &nbsp;&bull;&nbsp;
+      <a href="/privacy">Privacy Policy</a>
+      &nbsp;&bull;&nbsp;
+      <a href="/terms">Terms of Service</a>
+    </p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const alertEl  = document.getElementById('alert');
+    const formWrap = document.getElementById('formWrap');
+    const authGate = document.getElementById('authGate');
+    const form     = document.getElementById('sellForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function showAlert(msg, type) {
+      alertEl.textContent = msg;
+      alertEl.className = 'alert alert-' + type + ' visible';
+      alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Check auth before showing the form
+    (async () => {
+      try {
+        const res  = await fetch('/api/me');
+        const data = await res.json();
+        if (data.user) {
+          formWrap.style.display = '';
+        } else {
+          authGate.style.display = '';
+        }
+      } catch {
+        authGate.style.display = '';
+      }
+    })();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertEl.className = 'alert';
+
+      const name      = form.name.value.trim();
+      const species   = form.species.value;
+      const price_btc = form.price_btc.value.trim();
+
+      if (!name)      { showAlert('Pet name is required.', 'error'); return; }
+      if (!species)   { showAlert('Please select a species.', 'error'); return; }
+      if (!price_btc || isNaN(Number(price_btc)) || Number(price_btc) < 0) {
+        showAlert('Please enter a valid price in BTC.', 'error');
+        return;
+      }
+
+      const payload = {
+        name,
+        species,
+        breed:           form.breed.value.trim() || null,
+        date_of_birth:   form.date_of_birth.value || null,
+        weight_lbs:      form.weight_lbs.value ? Number(form.weight_lbs.value) : null,
+        gender:          form.gender.value || null,
+        color:           form.color.value.trim() || null,
+        description:     form.description.value.trim() || null,
+        health_info:     form.health_info.value.trim() || null,
+        vaccinations:    form.vaccinations.value.trim() || null,
+        registry_name:   form.registry_name.value.trim() || null,
+        registry_number: form.registry_number.value.trim() || null,
+        microchip_id:    form.microchip_id.value.trim() || null,
+        price_btc:       Number(price_btc)
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Publishing\u2026';
+
+      try {
+        const res  = await fetch('/api/pets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert('Listing published! Redirecting\u2026', 'success');
+          setTimeout(() => { window.location.href = '/'; }, 1500);
+        } else if (res.status === 401) {
+          authGate.style.display = '';
+          formWrap.style.display = 'none';
+        } else {
+          showAlert(data.error || 'Something went wrong. Please try again.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Publish listing';
+        }
+      } catch {
+        showAlert('Network error. Please check your connection and try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Publish listing';
+      }
+    });
+  </script>
+
+</body>
+</html>

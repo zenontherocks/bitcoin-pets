@@ -25,7 +25,74 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/logout' && request.method === 'POST') {
     return handleLogout(request, env);
   }
+  if (url.pathname === '/api/me' && request.method === 'GET') {
+    return handleMe(request, env);
+  }
+  if (url.pathname === '/api/pets' && request.method === 'POST') {
+    return handleCreatePet(request, env);
+  }
   return json({ error: 'Not found' }, 404);
+}
+
+async function getSession(request, env) {
+  const sessionId = getCookie(request, 'session');
+  if (!sessionId) return null;
+  const session = await env.DB.prepare(
+    "SELECT s.user_id, u.username, u.email FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > datetime('now') LIMIT 1"
+  ).bind(sessionId).first();
+  return session || null;
+}
+
+async function handleMe(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ user: null }, 200);
+  return json({ user: { username: session.username, email: session.email } });
+}
+
+async function handleCreatePet(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'You must be signed in to create a listing' }, 401);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { name, species, breed, date_of_birth, weight_lbs, gender, color,
+          description, health_info, vaccinations, registry_name,
+          registry_number, microchip_id, price_btc } = body;
+
+  if (!name || !name.trim()) return json({ error: 'Pet name is required' }, 400);
+  if (!species || !species.trim()) return json({ error: 'Species is required' }, 400);
+  if (price_btc == null || isNaN(Number(price_btc)) || Number(price_btc) < 0) {
+    return json({ error: 'A valid price in BTC is required' }, 400);
+  }
+
+  // Look up user_id from username stored in session
+  const userRow = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(session.username).first();
+  if (!userRow) return json({ error: 'User not found' }, 500);
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(`
+    INSERT INTO pets (id, user_id, name, species, breed, date_of_birth, weight_lbs,
+      gender, color, description, health_info, vaccinations,
+      registry_name, registry_number, microchip_id, price_btc)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id, userRow.id,
+    name.trim(), species.trim(),
+    breed || null, date_of_birth || null,
+    weight_lbs ? Number(weight_lbs) : null,
+    gender || null, color || null,
+    description || null, health_info || null,
+    vaccinations || null, registry_name || null,
+    registry_number || null, microchip_id || null,
+    Number(price_btc)
+  ).run();
+
+  return json({ success: true, id }, 201);
 }
 
 async function handleRegister(request, env) {
