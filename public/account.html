@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Account &mdash; Bitcoin Pets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f7931a; --orange-dark: #d97b0e; --dark: #1a1a1a; --gray: #555;
+      --border: #ddd; --light-gray: #f5f5f5; --white: #fff; --radius: 8px;
+      --red: #e53e3e; --green: #38a169;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--dark); background: var(--light-gray); display: flex; flex-direction: column; min-height: 100vh; }
+
+    nav { background: var(--dark); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-size: 1.3rem; font-weight: 700; color: var(--orange); text-decoration: none; }
+    .nav-logo span { color: #fff; }
+    .nav-links { list-style: none; display: flex; gap: 0.25rem; align-items: center; }
+    .nav-links a { color: #ccc; text-decoration: none; font-size: 0.9rem; padding: 0.4rem 0.75rem; border-radius: var(--radius); transition: color 0.15s, background 0.15s; }
+    .nav-links a:hover { color: #fff; background: #2e2e2e; }
+    .nav-links .btn-primary { background: var(--orange); color: #fff; font-weight: 600; }
+    .nav-links .btn-primary:hover { background: var(--orange-dark); }
+
+    main { flex: 1; max-width: 660px; width: 100%; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+
+    .page-header { margin-bottom: 2rem; }
+    .page-header h1 { font-size: 1.75rem; font-weight: 800; }
+    .page-header p { font-size: 0.9rem; color: var(--gray); margin-top: 0.25rem; }
+
+    .card { background: var(--white); border-radius: var(--radius); box-shadow: 0 1px 8px rgba(0,0,0,0.08); padding: 1.75rem; margin-bottom: 1.5rem; }
+    .card-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
+    .field:last-child { margin-bottom: 0; }
+    label { font-size: 0.8rem; font-weight: 600; color: var(--gray); }
+    input, select {
+      padding: 0.6rem 0.75rem; border: 1.5px solid var(--border); border-radius: var(--radius);
+      font-size: 0.9rem; color: var(--dark); background: var(--white);
+      transition: border-color 0.15s; width: 100%;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--orange); }
+    input[readonly] { background: var(--light-gray); color: var(--gray); cursor: default; }
+    input[readonly]:focus { border-color: var(--border); }
+
+    .field-hint { font-size: 0.75rem; color: #aaa; }
+
+    .btn { padding: 0.65rem 1.5rem; border-radius: var(--radius); font-size: 0.9rem; font-weight: 700; border: none; cursor: pointer; transition: background 0.15s; }
+    .btn-save { background: var(--orange); color: #fff; }
+    .btn-save:hover { background: var(--orange-dark); }
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-danger { background: #fff; color: var(--red); border: 1.5px solid var(--red); padding: 0.6rem 1.25rem; }
+    .btn-danger:hover { background: #fff5f5; }
+
+    .form-footer { display: flex; align-items: center; gap: 1rem; margin-top: 1.25rem; flex-wrap: wrap; }
+    .status-msg { font-size: 0.85rem; font-weight: 600; }
+    .status-msg.ok  { color: var(--green); }
+    .status-msg.err { color: var(--red); }
+
+    .logout-row { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
+
+    footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+  <ul class="nav-links">
+    <li><a href="/browse">Browse Pets</a></li>
+    <li><a href="/sell" class="btn-primary">+ Sell a Pet</a></li>
+    <li><a href="/account">My Account</a></li>
+  </ul>
+</nav>
+
+<main>
+  <div class="page-header">
+    <h1>My Account</h1>
+    <p id="memberSince"></p>
+  </div>
+
+  <!-- Profile info -->
+  <form class="card" id="profileForm" autocomplete="off">
+    <div class="card-title">Profile</div>
+
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="username" readonly />
+      <span class="field-hint">Username cannot be changed.</span>
+    </div>
+
+    <div class="field">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" autocomplete="email" />
+    </div>
+
+    <div class="field">
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" name="phone" placeholder="+1 555 000 0000" />
+    </div>
+
+    <div class="field">
+      <label for="bitcoin_address">Bitcoin Address</label>
+      <input type="text" id="bitcoin_address" name="bitcoin_address" placeholder="bc1q..." autocomplete="off" />
+      <span class="field-hint">Shown to buyers so they can send payment.</span>
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem">Shipping Address</div>
+
+    <div class="field">
+      <label for="address_line1">Address Line 1</label>
+      <input type="text" id="address_line1" name="address_line1" autocomplete="address-line1" />
+    </div>
+    <div class="field">
+      <label for="address_line2">Address Line 2</label>
+      <input type="text" id="address_line2" name="address_line2" autocomplete="address-line2" />
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="city">City</label>
+        <input type="text" id="city" name="city" autocomplete="address-level2" />
+      </div>
+      <div class="field">
+        <label for="state">State / Province</label>
+        <input type="text" id="state" name="state" autocomplete="address-level1" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="zip_code">ZIP / Postal Code</label>
+        <input type="text" id="zip_code" name="zip_code" autocomplete="postal-code" />
+      </div>
+      <div class="field">
+        <label for="country">Country</label>
+        <input type="text" id="country" name="country" autocomplete="country-name" />
+      </div>
+    </div>
+
+    <div class="form-footer">
+      <button type="submit" class="btn btn-save" id="saveProfileBtn">Save Changes</button>
+      <span class="status-msg" id="profileStatus"></span>
+    </div>
+  </form>
+
+  <!-- Change password -->
+  <form class="card" id="passwordForm" autocomplete="off">
+    <div class="card-title">Change Password</div>
+
+    <div class="field">
+      <label for="current_password">Current Password</label>
+      <input type="password" id="current_password" name="current_password" autocomplete="current-password" />
+    </div>
+    <div class="field">
+      <label for="new_password">New Password</label>
+      <input type="password" id="new_password" name="new_password" autocomplete="new-password" />
+      <span class="field-hint">Minimum 8 characters.</span>
+    </div>
+    <div class="field">
+      <label for="confirm_password">Confirm New Password</label>
+      <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" />
+    </div>
+
+    <div class="form-footer">
+      <button type="submit" class="btn btn-save" id="savePasswordBtn">Update Password</button>
+      <span class="status-msg" id="passwordStatus"></span>
+    </div>
+  </form>
+
+  <!-- Sign out -->
+  <div class="card">
+    <div class="card-title">Session</div>
+    <div class="logout-row">
+      <button class="btn btn-danger" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+    &nbsp;&bull;&nbsp;<a href="/privacy">Privacy Policy</a>
+    &nbsp;&bull;&nbsp;<a href="/terms">Terms of Service</a>
+  </p>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  function val(id) { return document.getElementById(id).value.trim(); }
+  function setVal(id, v) { document.getElementById(id).value = v || ''; }
+
+  function showStatus(elId, msg, isOk) {
+    const el = document.getElementById(elId);
+    el.textContent = msg;
+    el.className = 'status-msg ' + (isOk ? 'ok' : 'err');
+    if (isOk) setTimeout(() => { el.textContent = ''; }, 3000);
+  }
+
+  async function loadAccount() {
+    const res = await fetch('/api/account');
+    if (res.status === 401) { location.href = '/login'; return; }
+    const { user } = await res.json();
+
+    document.title = user.username + ' \u2014 Bitcoin Pets';
+    setVal('username', user.username);
+    setVal('email', user.email);
+    setVal('phone', user.phone);
+    setVal('bitcoin_address', user.bitcoin_address);
+    setVal('address_line1', user.address_line1);
+    setVal('address_line2', user.address_line2);
+    setVal('city', user.city);
+    setVal('state', user.state);
+    setVal('zip_code', user.zip_code);
+    setVal('country', user.country);
+
+    if (user.created_at) {
+      const joined = new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      document.getElementById('memberSince').textContent = 'Member since ' + joined;
+    }
+  }
+
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveProfileBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const res = await fetch('/api/account', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: val('email'), phone: val('phone'),
+          bitcoin_address: val('bitcoin_address'),
+          address_line1: val('address_line1'), address_line2: val('address_line2'),
+          city: val('city'), state: val('state'),
+          zip_code: val('zip_code'), country: val('country'),
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) showStatus('profileStatus', data.error || 'Save failed', false);
+      else showStatus('profileStatus', 'Saved!', true);
+    } catch {
+      showStatus('profileStatus', 'Network error', false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+    }
+  });
+
+  document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newPw  = val('new_password');
+    const confirm = val('confirm_password');
+    if (newPw !== confirm) { showStatus('passwordStatus', 'Passwords do not match', false); return; }
+    if (newPw.length < 8)  { showStatus('passwordStatus', 'Minimum 8 characters', false); return; }
+
+    const btn = document.getElementById('savePasswordBtn');
+    btn.disabled = true;
+    btn.textContent = 'Updating…';
+    try {
+      const res = await fetch('/api/account/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: val('current_password'), new_password: newPw })
+      });
+      const data = await res.json();
+      if (!res.ok) showStatus('passwordStatus', data.error || 'Update failed', false);
+      else {
+        showStatus('passwordStatus', 'Password updated!', true);
+        document.getElementById('passwordForm').reset();
+      }
+    } catch {
+      showStatus('passwordStatus', 'Network error', false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Update Password';
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    location.href = '/';
+  });
+
+  loadAccount();
+</script>
+</body>
+</html>

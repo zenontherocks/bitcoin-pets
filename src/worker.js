@@ -35,6 +35,15 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/me' && request.method === 'GET') {
     return handleMe(request, env);
   }
+  if (url.pathname === '/api/account' && request.method === 'GET') {
+    return handleGetAccount(request, env);
+  }
+  if (url.pathname === '/api/account' && request.method === 'PUT') {
+    return handleUpdateAccount(request, env);
+  }
+  if (url.pathname === '/api/account/password' && request.method === 'PUT') {
+    return handleChangePassword(request, env);
+  }
   if (url.pathname === '/api/pets' && request.method === 'GET') {
     return handleListPets(request, env, url);
   }
@@ -90,9 +99,87 @@ async function handleListPets(request, env, url) {
   return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page });
 }
 
+async function handleGetAccount(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'Unauthorized' }, 401);
+  const user = await env.DB.prepare(
+    'SELECT id, username, email, phone, address_line1, address_line2, city, state, zip_code, country, bitcoin_address, created_at FROM users WHERE username = ?'
+  ).bind(session.username).first();
+  if (!user) return json({ error: 'Not found' }, 404);
+  return json({ user });
+}
+
+async function handleUpdateAccount(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'Unauthorized' }, 401);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
+
+  const { email, phone, address_line1, address_line2, city, state, zip_code, country, bitcoin_address } = body;
+
+  if (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return json({ error: 'Invalid email address' }, 400);
+  }
+
+  try {
+    await env.DB.prepare(`
+      UPDATE users SET
+        email = COALESCE(?, email),
+        phone = ?,
+        address_line1 = ?,
+        address_line2 = ?,
+        city = ?,
+        state = ?,
+        zip_code = ?,
+        country = COALESCE(?, country),
+        bitcoin_address = ?,
+        updated_at = datetime('now')
+      WHERE username = ?
+    `).bind(
+      email ? email.trim().toLowerCase() : null,
+      phone || null, address_line1 || null, address_line2 || null,
+      city || null, state || null, zip_code || null,
+      country || null, bitcoin_address || null,
+      session.username
+    ).run();
+  } catch (e) {
+    if (e.message && e.message.includes('UNIQUE')) return json({ error: 'Email already in use' }, 409);
+    throw e;
+  }
+
+  return json({ success: true });
+}
+
+async function handleChangePassword(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'Unauthorized' }, 401);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
+
+  const { current_password, new_password } = body;
+  if (!current_password || !new_password) return json({ error: 'current_password and new_password are required' }, 400);
+  if (new_password.length < 8) return json({ error: 'New password must be at least 8 characters' }, 400);
+
+  const user = await env.DB.prepare('SELECT id, password_hash FROM users WHERE username = ?').bind(session.username).first();
+  if (!user) return json({ error: 'Not found' }, 404);
+
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(current_password));
+  const currentHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  if (currentHash !== user.password_hash) return json({ error: 'Current password is incorrect' }, 400);
+
+  const newHashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(new_password));
+  const newHash = Array.from(new Uint8Array(newHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  await env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?').bind(newHash, user.id).run();
+  return json({ success: true });
+}
+
 async function handleGetPet(request, env, id) {
   const pet = await env.DB.prepare(`
-    SELECT p.*, u.username AS seller
+    SELECT p.*, u.username AS seller, u.bitcoin_address AS seller_btc
     FROM pets p
     JOIN users u ON u.id = p.user_id
     WHERE p.id = ?
