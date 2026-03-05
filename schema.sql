@@ -13,6 +13,7 @@ CREATE TABLE users (
   state TEXT,
   zip_code TEXT,
   country TEXT DEFAULT 'US',
+  password_hash TEXT NOT NULL,
   bitcoin_address TEXT,                          -- for receiving payment
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
