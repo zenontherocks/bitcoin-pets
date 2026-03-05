@@ -148,9 +148,10 @@ async function handleLogin(request, env) {
     return json({ error: 'Email/username and password are required' }, 400);
   }
 
+  const loginVal = login.trim().toLowerCase();
   const user = await env.DB.prepare(
-    'SELECT id, password_hash FROM users WHERE email = ?1 OR username = ?1 LIMIT 1'
-  ).bind(login.trim().toLowerCase()).first();
+    'SELECT id, password_hash FROM users WHERE email = ? OR LOWER(username) = ? LIMIT 1'
+  ).bind(loginVal, loginVal).first();
 
   if (!user || !(await verifyPassword(password, user.password_hash))) {
     return json({ error: 'Invalid email or password' }, 401);
