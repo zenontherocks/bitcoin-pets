@@ -521,6 +521,8 @@
           formWrap.style.display = '';
           document.getElementById('navAuthItem').innerHTML =
             '<a href="/account">My Account</a>';
+          const su = document.getElementById('navSignUpItem');
+          if (su) su.remove();
         } else {
           authGate.style.display = '';
         }
