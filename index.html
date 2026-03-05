@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitcoin Pets &mdash; Buy &amp; Sell Pets with Bitcoin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f7931a;
+      --orange-dark: #d97b0e;
+      --dark: #1a1a1a;
+      --gray: #444;
+      --light-gray: #f5f5f5;
+      --white: #fff;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--dark);
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--dark);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-logo span { color: var(--white); }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: #ccc;
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius);
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--white); background: #2e2e2e; }
+
+    .nav-links .btn-signup {
+      background: var(--orange);
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .nav-links .btn-signup:hover { background: var(--orange-dark); }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
+      color: var(--white);
+      text-align: center;
+      padding: 6rem 2rem 5rem;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(247, 147, 26, 0.15);
+      color: var(--orange);
+      border: 1px solid rgba(247, 147, 26, 0.4);
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--orange);
+    }
+
+    .hero p {
+      font-size: 1.15rem;
+      color: #aaa;
+      max-width: 580px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.75rem;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary { background: var(--orange); color: var(--white); }
+    .btn-primary:hover { background: var(--orange-dark); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--white);
+      border: 2px solid #555;
+    }
+
+    .btn-outline:hover { border-color: #888; }
+
+    /* ── How it works ── */
+    .how {
+      padding: 5rem 2rem;
+      background: var(--light-gray);
+      text-align: center;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-sub {
+      color: var(--gray);
+      margin-bottom: 3rem;
+      font-size: 1rem;
+    }
+
+    .cards {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 2rem 1.75rem;
+      flex: 1;
+      min-width: 220px;
+      max-width: 260px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .card-icon {
+      font-size: 2.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .card p  { font-size: 0.9rem; color: var(--gray); line-height: 1.6; }
+
+    /* ── Main ── */
+    main { flex: 1; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--dark);
+      color: #888;
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+    <ul class="nav-links">
+      <li><a href="/browse">Browse Pets</a></li>
+      <li><a href="/sell">Sell a Pet</a></li>
+      <li><a href="/how-it-works">How It Works</a></li>
+      <li><a href="/about">About</a></li>
+      <li><a href="/login">Sign In</a></li>
+      <li><a href="/register" class="btn-signup">Sign Up</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="hero-badge">Powered by Bitcoin</div>
+      <h1>The marketplace for pets,<br>paid in <em>bitcoin</em>.</h1>
+      <p>
+        Bitcoin Pets connects responsible breeders and pet owners with buyers
+        who share a love for animals&mdash;and a preference for borderless,
+        permissionless payments.
+      </p>
+      <div class="hero-actions">
+        <a href="/browse" class="btn btn-primary">Browse Pets</a>
+        <a href="/sell" class="btn btn-outline">List Your Pet</a>
+      </div>
+    </section>
+
+    <section class="how">
+      <h2 class="section-title">How it works</h2>
+      <p class="section-sub">Simple, secure, and settled in sats.</p>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">&#128269;</div>
+          <h3>Browse listings</h3>
+          <p>Search pets by species, breed, location, and price. Every listing includes photos, health records, and registry info.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">&#8383;</div>
+          <h3>Pay with Bitcoin</h3>
+          <p>Send payment directly to the seller&rsquo;s Bitcoin address&mdash;no banks, no chargebacks, no middlemen.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">&#128062;</div>
+          <h3>Meet your pet</h3>
+          <p>Coordinate pickup or delivery with your seller. Your new companion is just a few blocks away.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">&#128196;</div>
+          <h3>Sell your pet</h3>
+          <p>Create a free listing in minutes. Add pictures, health info, and your asking price in BTC to reach buyers worldwide.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+      &nbsp;&bull;&nbsp;
+      <a href="/privacy">Privacy Policy</a>
+      &nbsp;&bull;&nbsp;
+      <a href="/terms">Terms of Service</a>
+    </p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+
+</body>
+</html>
