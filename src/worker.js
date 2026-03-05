@@ -4,7 +4,7 @@ export default {
     if (response.status === 404) {
       const url = new URL(request.url);
       url.pathname = '/index.html';
-      return env.ASSETS.fetch(new Request(url.toString(), request));
+      return env.ASSETS.fetch(new Request(url.toString()));
     }
     return response;
   },
