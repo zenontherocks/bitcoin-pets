@@ -173,7 +173,7 @@ async function handleChangePassword(request, env) {
   const newHashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(new_password));
   const newHash = Array.from(new Uint8Array(newHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-  await env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?').bind(newHash, user.id).run();
+  await env.DB.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, user.id).run();
   return json({ success: true });
 }
 
