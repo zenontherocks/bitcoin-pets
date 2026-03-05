@@ -36,7 +36,7 @@ async function handleRegister(request, env) {
     return json({ error: 'username, email, and password are required' }, 400);
   }
   if (username.length < 3 || username.length > 32) {
-    return json({ error: 'Username must be 3\u201332 characters' }, 400);
+    return json({ error: 'Username must be 3-32 characters' }, 400);
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ error: 'Invalid email address' }, 400);
