@@ -8,6 +8,13 @@ export default {
 
     const response = await env.ASSETS.fetch(request);
     if (response.status === 404) {
+      // Try pretty URL: /pet -> /pet.html, /browse -> /browse.html, etc.
+      const tryUrl = new URL(url.toString());
+      if (!tryUrl.pathname.includes('.')) {
+        tryUrl.pathname = tryUrl.pathname.replace(/\/$/, '') + '.html';
+        const htmlResponse = await env.ASSETS.fetch(new Request(tryUrl.toString()));
+        if (htmlResponse.status !== 404) return htmlResponse;
+      }
       url.pathname = '/index.html';
       return env.ASSETS.fetch(new Request(url.toString()));
     }
