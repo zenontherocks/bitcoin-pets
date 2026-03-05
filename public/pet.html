@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pet Details &mdash; Bitcoin Pets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f7931a;
+      --orange-dark: #d97b0e;
+      --dark: #1a1a1a;
+      --gray: #555;
+      --border: #ddd;
+      --light-gray: #f5f5f5;
+      --white: #fff;
+      --radius: 8px;
+      --green: #38a169;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--dark);
+      background: var(--light-gray);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    nav {
+      background: var(--dark);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-logo { font-size: 1.3rem; font-weight: 700; color: var(--orange); text-decoration: none; }
+    .nav-logo span { color: #fff; }
+    .nav-links { list-style: none; display: flex; gap: 0.25rem; align-items: center; }
+    .nav-links a { color: #ccc; text-decoration: none; font-size: 0.9rem; padding: 0.4rem 0.75rem; border-radius: var(--radius); transition: color 0.15s, background 0.15s; }
+    .nav-links a:hover { color: #fff; background: #2e2e2e; }
+    .nav-links .btn-primary { background: var(--orange); color: #fff; font-weight: 600; }
+    .nav-links .btn-primary:hover { background: var(--orange-dark); }
+
+    main {
+      flex: 1;
+      max-width: 1000px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.875rem;
+      color: var(--gray);
+      text-decoration: none;
+      margin-bottom: 1.5rem;
+    }
+    .back-link:hover { color: var(--dark); }
+
+    /* ── Two-column layout ── */
+    .pet-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    @media (max-width: 720px) {
+      .pet-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ── Photo gallery ── */
+    .gallery { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .gallery-main {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: var(--radius);
+      background: #e0e0e0;
+      display: block;
+    }
+
+    .gallery-placeholder {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: #ebebeb;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5rem;
+      color: #ccc;
+    }
+
+    .gallery-thumbs {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .thumb {
+      width: 70px;
+      height: 70px;
+      object-fit: cover;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .thumb.active, .thumb:hover { border-color: var(--orange); }
+
+    /* ── Details panel ── */
+    .details-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .pet-title { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+    .pet-species-badge {
+      display: inline-block;
+      background: #f0f0f0;
+      border-radius: 999px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: capitalize;
+      margin-top: 0.25rem;
+    }
+
+    .price-box {
+      background: #fffaf3;
+      border: 1.5px solid #f7c97a;
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+    }
+    .price-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); }
+    .price-value { font-size: 2rem; font-weight: 800; color: var(--orange); margin-top: 0.1rem; }
+
+    .btn-buy {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--orange);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-buy:hover { background: var(--orange-dark); }
+    .btn-buy:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .seller-line {
+      font-size: 0.875rem;
+      color: var(--gray);
+    }
+    .seller-line strong { color: var(--dark); }
+
+    /* ── Specs table ── */
+    .specs {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+
+    .specs-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gray);
+      padding: 0.75rem 1rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.875rem;
+      gap: 1rem;
+    }
+    .spec-row:last-child { border-bottom: none; }
+    .spec-label { color: var(--gray); flex-shrink: 0; }
+    .spec-value { font-weight: 600; text-align: right; word-break: break-word; }
+
+    /* ── Description / health sections ── */
+    .section {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      padding: 1rem 1.25rem;
+    }
+    .section h2 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gray);
+      margin-bottom: 0.6rem;
+    }
+    .section p { font-size: 0.9rem; line-height: 1.6; color: #333; white-space: pre-wrap; }
+
+    /* ── Buy modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--white);
+      border-radius: 12px;
+      max-width: 440px;
+      width: 100%;
+      padding: 2rem;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      cursor: pointer;
+      color: var(--gray);
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--dark); }
+
+    .modal h2 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .modal .modal-sub { font-size: 0.875rem; color: var(--gray); margin-bottom: 1.5rem; }
+
+    .btc-address-box {
+      background: #f5f5f5;
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .btc-address-label { font-size: 0.75rem; color: var(--gray); margin-bottom: 0.5rem; }
+    .btc-address {
+      font-family: monospace;
+      font-size: 0.8rem;
+      word-break: break-all;
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    .btc-amount-big {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--orange);
+      margin-bottom: 1.25rem;
+    }
+
+    .copy-btn {
+      width: 100%;
+      padding: 0.65rem;
+      background: var(--dark);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 0.75rem;
+    }
+    .copy-btn:hover { background: #333; }
+
+    .modal-note {
+      font-size: 0.78rem;
+      color: #aaa;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ── State ── */
+    .state-box { text-align: center; padding: 4rem 1rem; color: var(--gray); }
+    .state-box a { color: var(--orange); text-decoration: none; font-weight: 600; }
+
+    footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/browse">Browse Pets</a></li>
+      <li><a href="/sell">Sell a Pet</a></li>
+      <li id="navAuthItem"><a href="/login">Sign In</a></li>
+    </ul>
+  </nav>
+
+  <main id="main">
+    <div class="state-box" id="loadingState"><p>Loading&hellip;</p></div>
+  </main>
+
+  <!-- Buy modal -->
+  <div class="modal-overlay" id="buyModal">
+    <div class="modal">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <h2>Purchase this Pet</h2>
+      <p class="modal-sub">Send the exact amount in Bitcoin to complete this purchase. Contact the seller after payment.</p>
+      <div class="btc-amount-big" id="modalAmount"></div>
+      <div class="btc-address-box">
+        <div class="btc-address-label">Seller&rsquo;s Bitcoin Address</div>
+        <div class="btc-address" id="modalAddress">Contact seller for address</div>
+      </div>
+      <button class="copy-btn" id="copyBtn">Copy Address</button>
+      <p class="modal-note">This marketplace facilitates peer-to-peer listings. Always verify the pet and seller before sending funds.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+      &nbsp;&bull;&nbsp;<a href="/privacy">Privacy Policy</a>
+      &nbsp;&bull;&nbsp;<a href="/terms">Terms of Service</a>
+    </p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const SPECIES_ICON = {
+      dog: '&#128054;', cat: '&#128049;', bird: '&#128038;', reptile: '&#129422;',
+      'small animal': '&#128057;', fish: '&#128032;', horse: '&#128052;', other: '&#128062;'
+    };
+
+    function escHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])
+      );
+    }
+
+    function formatBtc(n) {
+      const num = parseFloat(n);
+      if (isNaN(num)) return '—';
+      return num.toLocaleString('en-US', { maximumFractionDigits: 8 }) + ' BTC';
+    }
+
+    function formatDate(str) {
+      if (!str) return null;
+      try { return new Date(str).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); }
+      catch { return str; }
+    }
+
+    function ageFromDob(dob) {
+      if (!dob) return null;
+      const birth = new Date(dob);
+      const now   = new Date();
+      let years  = now.getFullYear() - birth.getFullYear();
+      let months = now.getMonth() - birth.getMonth();
+      if (months < 0) { years--; months += 12; }
+      if (years > 0) return years + ' yr' + (years > 1 ? 's' : '') + (months > 0 ? ', ' + months + ' mo' : '');
+      if (months > 0) return months + ' month' + (months > 1 ? 's' : '');
+      return 'Less than 1 month';
+    }
+
+    const params = new URLSearchParams(location.search);
+    const petId  = params.get('id');
+
+    async function load() {
+      const main = document.getElementById('main');
+      if (!petId) {
+        main.innerHTML = '<div class="state-box"><p>No pet specified. <a href="/browse">Browse listings</a></p></div>';
+        return;
+      }
+
+      let data;
+      try {
+        const res = await fetch('/api/pets/' + encodeURIComponent(petId));
+        if (res.status === 404) throw new Error('not-found');
+        if (!res.ok) throw new Error('error');
+        data = await res.json();
+      } catch (e) {
+        main.innerHTML = e.message === 'not-found'
+          ? '<div class="state-box"><p>Listing not found. <a href="/browse">Browse listings</a></p></div>'
+          : '<div class="state-box"><p>Could not load listing. Please refresh.</p></div>';
+        return;
+      }
+
+      const { pet, photos } = data;
+      document.title = escHtml(pet.name) + ' \u2014 Bitcoin Pets';
+
+      const primaryPhoto = photos.find(p => p.is_primary) || photos[0];
+
+      // Build gallery
+      let galleryHtml = '';
+      if (primaryPhoto) {
+        galleryHtml += `<img class="gallery-main" id="mainImg" src="${escHtml(primaryPhoto.url)}" alt="${escHtml(pet.name)}" />`;
+        if (photos.length > 1) {
+          galleryHtml += '<div class="gallery-thumbs">';
+          photos.forEach((p, i) => {
+            galleryHtml += `<img class="thumb${i === 0 ? ' active' : ''}" src="${escHtml(p.url)}" alt="Photo ${i+1}" data-idx="${i}" />`;
+          });
+          galleryHtml += '</div>';
+        }
+      } else {
+        galleryHtml += `<div class="gallery-placeholder">${SPECIES_ICON[pet.species] || '&#128062;'}</div>`;
+      }
+
+      // Build specs
+      const specs = [
+        ['Species',    pet.species ? pet.species.charAt(0).toUpperCase() + pet.species.slice(1) : null],
+        ['Breed',      pet.breed],
+        ['Gender',     pet.gender ? pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1) : null],
+        ['Age',        ageFromDob(pet.date_of_birth)],
+        ['Color',      pet.color],
+        ['Weight',     pet.weight_lbs ? pet.weight_lbs + ' lbs' : null],
+        ['Microchip',  pet.microchip_id],
+        ['Registry',   pet.registry_name && pet.registry_number ? pet.registry_name + ' #' + pet.registry_number : (pet.registry_name || null)],
+        ['Listed',     formatDate(pet.created_at)],
+      ].filter(([, v]) => v);
+
+      let specsHtml = specs.map(([label, value]) =>
+        `<div class="spec-row"><span class="spec-label">${escHtml(label)}</span><span class="spec-value">${escHtml(value)}</span></div>`
+      ).join('');
+
+      // Available status badge
+      const statusColor = pet.status === 'available' ? '#38a169' : '#aaa';
+      const statusLabel = pet.status === 'available' ? '&#10003; Available' : 'Not available';
+
+      main.innerHTML = `
+        <a href="/browse" class="back-link">&#8592; Back to Browse</a>
+        <div class="pet-layout">
+          <div>
+            <div class="gallery">${galleryHtml}</div>
+            ${pet.description ? `<div class="section" style="margin-top:1.25rem"><h2>About</h2><p>${escHtml(pet.description)}</p></div>` : ''}
+            ${pet.health_info ? `<div class="section" style="margin-top:1rem"><h2>Health Information</h2><p>${escHtml(pet.health_info)}</p></div>` : ''}
+            ${pet.vaccinations ? `<div class="section" style="margin-top:1rem"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
+          </div>
+
+          <div class="details-panel">
+            <div>
+              <div class="pet-title">${escHtml(pet.name)}</div>
+              <span class="pet-species-badge" style="background:#f0f0f0">${escHtml(pet.species || '')}</span>
+              &nbsp;
+              <span class="pet-species-badge" style="background:${statusColor}22; color:${statusColor}">${statusLabel}</span>
+            </div>
+
+            <div class="price-box">
+              <div class="price-label">Asking Price</div>
+              <div class="price-value">${formatBtc(pet.price_btc)}</div>
+            </div>
+
+            ${pet.status === 'available' ? `<button class="btn-buy" id="buyBtn">Buy with Bitcoin</button>` : `<button class="btn-buy" disabled>No longer available</button>`}
+
+            <div class="seller-line">Listed by <strong>${escHtml(pet.seller)}</strong></div>
+
+            ${specsHtml.length ? `<div class="specs"><div class="specs-title">Details</div>${specsHtml}</div>` : ''}
+          </div>
+        </div>
+      `;
+
+      // Thumb switching
+      document.querySelectorAll('.thumb').forEach(thumb => {
+        thumb.addEventListener('click', () => {
+          document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+          thumb.classList.add('active');
+          document.getElementById('mainImg').src = thumb.src;
+        });
+      });
+
+      // Buy button
+      const buyBtn = document.getElementById('buyBtn');
+      if (buyBtn) {
+        buyBtn.addEventListener('click', () => {
+          document.getElementById('modalAmount').textContent = formatBtc(pet.price_btc);
+          document.getElementById('buyModal').classList.add('open');
+        });
+      }
+    }
+
+    // Modal
+    document.getElementById('modalClose').addEventListener('click', () => {
+      document.getElementById('buyModal').classList.remove('open');
+    });
+    document.getElementById('buyModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('buyModal')) {
+        document.getElementById('buyModal').classList.remove('open');
+      }
+    });
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const addr = document.getElementById('modalAddress').textContent;
+      if (addr && addr !== 'Contact seller for address') {
+        navigator.clipboard.writeText(addr).then(() => {
+          const btn = document.getElementById('copyBtn');
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.textContent = 'Copy Address', 2000);
+        });
+      }
+    });
+
+    // Nav auth
+    fetch('/api/me').then(r => r.json()).then(data => {
+      if (data.user) {
+        document.getElementById('navAuthItem').innerHTML =
+          '<a href="/sell" class="btn-primary">+ Sell a Pet</a>';
+      }
+    }).catch(() => {});
+
+    load();
+  </script>
+
+</body>
+</html>

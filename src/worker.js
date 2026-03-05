@@ -31,6 +31,10 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/pets' && request.method === 'GET') {
     return handleListPets(request, env, url);
   }
+  const petMatch = url.pathname.match(/^\/api\/pets\/([a-zA-Z0-9-]+)$/);
+  if (petMatch && request.method === 'GET') {
+    return handleGetPet(request, env, petMatch[1]);
+  }
   if (url.pathname === '/api/pets' && request.method === 'POST') {
     return handleCreatePet(request, env);
   }
@@ -77,6 +81,23 @@ async function handleListPets(request, env, url) {
   const pets = rows.results || [];
   const hasMore = pets.length > limit;
   return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page });
+}
+
+async function handleGetPet(request, env, id) {
+  const pet = await env.DB.prepare(`
+    SELECT p.*, u.username AS seller
+    FROM pets p
+    JOIN users u ON u.id = p.user_id
+    WHERE p.id = ?
+  `).bind(id).first();
+
+  if (!pet) return json({ error: 'Not found' }, 404);
+
+  const pics = await env.DB.prepare(
+    'SELECT url, is_primary FROM pet_pictures WHERE pet_id = ? ORDER BY is_primary DESC'
+  ).bind(id).all();
+
+  return json({ pet, photos: pics.results || [] });
 }
 
 async function handleMe(request, env) {
