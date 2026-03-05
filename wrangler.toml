@@ -2,3 +2,8 @@ name = "bitcoin-pets-wkr-1"
 main = "src/worker.js"
 compatibility_date = "2024-09-23"
 assets = { directory = "./public" }
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bitcoin-pets"
+database_id = "20b9a4ee-5b6c-4aea-bb78-709b63df26e9"

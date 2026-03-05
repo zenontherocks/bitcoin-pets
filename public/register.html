@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up &mdash; Bitcoin Pets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f7931a;
+      --orange-dark: #d97b0e;
+      --dark: #1a1a1a;
+      --gray: #444;
+      --light-gray: #f5f5f5;
+      --white: #fff;
+      --radius: 8px;
+      --red: #e53e3e;
+      --green: #38a169;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--dark);
+      background: var(--light-gray);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    nav {
+      background: var(--dark);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-logo span { color: var(--white); }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: #ccc;
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius);
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--white); background: #2e2e2e; }
+
+    .nav-links .btn-signup {
+      background: var(--orange);
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .nav-links .btn-signup:hover { background: var(--orange-dark); }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .card-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .card-header .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--orange);
+      text-decoration: none;
+      letter-spacing: -1px;
+    }
+
+    .card-header .logo span { color: var(--dark); }
+
+    .card-header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-top: 1rem;
+      color: var(--dark);
+    }
+
+    .card-header p {
+      font-size: 0.9rem;
+      color: var(--gray);
+      margin-top: 0.4rem;
+    }
+
+    .form-group { margin-bottom: 1.25rem; }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: var(--dark);
+    }
+
+    input {
+      width: 100%;
+      padding: 0.65rem 0.875rem;
+      border: 1.5px solid #ddd;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      color: var(--dark);
+      transition: border-color 0.15s;
+      background: var(--white);
+    }
+
+    input:focus { outline: none; border-color: var(--orange); }
+    input.error { border-color: var(--red); }
+
+    .field-error {
+      font-size: 0.8rem;
+      color: var(--red);
+      margin-top: 0.3rem;
+      display: none;
+    }
+
+    .field-error.visible { display: block; }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+
+    .alert.visible { display: block; }
+    .alert-error  { background: #fff5f5; color: var(--red);   border: 1px solid #fed7d7; }
+    .alert-success{ background: #f0fff4; color: var(--green); border: 1px solid #c6f6d5; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--orange);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      margin-top: 0.5rem;
+    }
+
+    .btn-submit:hover { background: var(--orange-dark); }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .sign-in {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--gray);
+    }
+
+    .sign-in a { color: var(--orange); text-decoration: none; font-weight: 600; }
+    .sign-in a:hover { text-decoration: underline; }
+
+    footer {
+      background: var(--dark);
+      color: #888;
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+    <ul class="nav-links">
+      <li><a href="/browse">Browse Pets</a></li>
+      <li><a href="/sell">Sell a Pet</a></li>
+      <li><a href="/login">Sign In</a></li>
+      <li><a href="/register" class="btn-signup">Sign Up</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="card">
+      <div class="card-header">
+        <a href="/" class="logo">&#8383;<span>itcoin Pets</span></a>
+        <h1>Create your account</h1>
+        <p>Join the bitcoin-native pet marketplace.</p>
+      </div>
+
+      <div id="alert" class="alert" role="alert"></div>
+
+      <form id="registerForm" novalidate>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" autocomplete="username"
+                 placeholder="satoshi" minlength="3" maxlength="32" required />
+          <div class="field-error" id="username-error"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input type="email" id="email" name="email" autocomplete="email"
+                 placeholder="you@example.com" required />
+          <div class="field-error" id="email-error"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="new-password"
+                 placeholder="At least 8 characters" minlength="8" required />
+          <div class="field-error" id="password-error"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm">Confirm password</label>
+          <input type="password" id="confirm" name="confirm" autocomplete="new-password"
+                 placeholder="Repeat your password" required />
+          <div class="field-error" id="confirm-error"></div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">Create account</button>
+      </form>
+
+      <p class="sign-in">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+      &nbsp;&bull;&nbsp;
+      <a href="/privacy">Privacy Policy</a>
+      &nbsp;&bull;&nbsp;
+      <a href="/terms">Terms of Service</a>
+    </p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const form = document.getElementById('registerForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const alertEl = document.getElementById('alert');
+
+    function showAlert(msg, type) {
+      alertEl.textContent = msg;
+      alertEl.className = 'alert alert-' + type + ' visible';
+    }
+
+    function fieldError(id, msg) {
+      const errEl = document.getElementById(id + '-error');
+      const input = document.getElementById(id);
+      if (msg) {
+        errEl.textContent = msg;
+        errEl.classList.add('visible');
+        input.classList.add('error');
+      } else {
+        errEl.classList.remove('visible');
+        input.classList.remove('error');
+      }
+    }
+
+    function clearErrors() {
+      ['username', 'email', 'password', 'confirm'].forEach(id => fieldError(id, ''));
+      alertEl.className = 'alert';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const username = form.username.value.trim();
+      const email    = form.email.value.trim();
+      const password = form.password.value;
+      const confirm  = form.confirm.value;
+
+      let valid = true;
+
+      if (username.length < 3) {
+        fieldError('username', 'Username must be at least 3 characters.');
+        valid = false;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        fieldError('email', 'Please enter a valid email address.');
+        valid = false;
+      }
+      if (password.length < 8) {
+        fieldError('password', 'Password must be at least 8 characters.');
+        valid = false;
+      }
+      if (password !== confirm) {
+        fieldError('confirm', 'Passwords do not match.');
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account\u2026';
+
+      try {
+        const res  = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert('Account created! Redirecting to sign in\u2026', 'success');
+          form.reset();
+          setTimeout(() => { window.location.href = '/login'; }, 1500);
+        } else {
+          showAlert(data.error || 'Something went wrong. Please try again.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create account';
+        }
+      } catch {
+        showAlert('Network error. Please check your connection and try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+      }
+    });
+  </script>
+
+</body>
+</html>
