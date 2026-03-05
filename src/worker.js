@@ -31,6 +31,12 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/pets' && request.method === 'POST') {
     return handleCreatePet(request, env);
   }
+  if (url.pathname === '/api/images/upload' && request.method === 'POST') {
+    return handleImageUpload(request, env);
+  }
+  if (url.pathname.startsWith('/api/images/') && request.method === 'GET') {
+    return handleServeImage(env, url.pathname.slice('/api/images/'.length));
+  }
   return json({ error: 'Not found' }, 404);
 }
 
@@ -62,7 +68,7 @@ async function handleCreatePet(request, env) {
 
   const { name, species, breed, date_of_birth, weight_lbs, gender, color,
           description, health_info, vaccinations, registry_name,
-          registry_number, microchip_id, price_btc } = body;
+          registry_number, microchip_id, price_btc, photo_keys } = body;
 
   if (!name || !name.trim()) return json({ error: 'Pet name is required' }, 400);
   if (!species || !species.trim()) return json({ error: 'Species is required' }, 400);
@@ -92,7 +98,72 @@ async function handleCreatePet(request, env) {
     Number(price_btc)
   ).run();
 
+  if (Array.isArray(photo_keys) && photo_keys.length > 0) {
+    const keys = photo_keys.slice(0, 5);
+    for (let i = 0; i < keys.length; i++) {
+      const key = String(keys[i]).replace(/[^a-zA-Z0-9.\-_]/g, '');
+      if (!key) continue;
+      await env.DB.prepare(
+        'INSERT INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
+      ).bind(crypto.randomUUID(), id, `/api/images/${key}`, i === 0 ? 1 : 0).run();
+    }
+  }
+
   return json({ success: true, id }, 201);
+}
+
+async function handleImageUpload(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'Unauthorized' }, 401);
+
+  const ct = request.headers.get('Content-Type') || '';
+  if (!ct.includes('multipart/form-data')) {
+    return json({ error: 'Expected multipart/form-data' }, 400);
+  }
+
+  let formData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return json({ error: 'Invalid form data' }, 400);
+  }
+
+  const file = formData.get('image');
+  if (!file || typeof file.arrayBuffer !== 'function') {
+    return json({ error: 'No image provided' }, 400);
+  }
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (!allowed.includes(file.type)) {
+    return json({ error: 'Only JPEG, PNG, WebP, and GIF images are accepted' }, 400);
+  }
+
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    return json({ error: 'Image must be under 5 MB' }, 400);
+  }
+
+  const extMap = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+  const key = `${crypto.randomUUID()}.${extMap[file.type]}`;
+
+  await env.IMAGES.put(key, file.stream(), {
+    httpMetadata: { contentType: file.type }
+  });
+
+  return json({ key, url: `/api/images/${key}` }, 201);
+}
+
+async function handleServeImage(env, key) {
+  const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '');
+  if (!safeKey) return new Response('Not found', { status: 404 });
+
+  const obj = await env.IMAGES.get(safeKey);
+  if (!obj) return new Response('Not found', { status: 404 });
+
+  const headers = new Headers();
+  obj.writeHttpMetadata(headers);
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  return new Response(obj.body, { headers });
 }
 
 async function handleRegister(request, env) {

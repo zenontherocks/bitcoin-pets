@@ -248,6 +248,90 @@
     footer a { color: var(--orange); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
+
+    /* ── Photo upload ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--orange);
+      background: #fffaf3;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    .drop-zone-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      pointer-events: none;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+    .drop-icon { font-size: 1.75rem; line-height: 1; margin-bottom: 0.15rem; }
+    .drop-hint { font-size: 0.78rem; color: #aaa; }
+    .photo-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .photo-item {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-item.uploading img { opacity: 0.5; }
+    .photo-item .remove-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: none;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .photo-item .remove-btn:hover { background: rgba(180,0,0,0.85); }
+    .photo-item .upload-error {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,245,245,0.92);
+      color: var(--red);
+      font-size: 0.7rem;
+      text-align: center;
+      padding: 4px;
+    }
+
     @media (max-width: 540px) {
       .form-grid { grid-template-columns: 1fr; }
       .section { padding: 1.25rem 1rem; }
@@ -331,6 +415,20 @@
             </div>
           </div>
         </div>
+
+        <div class="section">
+          <div class="section-title">Photos <span class="opt">(up to 5, optional)</span></div>
+          <div id="dropZone" class="drop-zone">
+            <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
+            <div class="drop-zone-inner">
+              <span class="drop-icon">&#8679;</span>
+              <span>Drag photos here or click to browse</span>
+              <span class="drop-hint">JPEG, PNG, WebP or GIF &middot; max 5 MB each</span>
+            </div>
+          </div>
+          <div id="photoGrid" class="photo-grid"></div>
+        </div>
+
 
         <div class="section">
           <div class="section-title">Description &amp; health</div>
@@ -429,6 +527,103 @@
       }
     })();
 
+
+    const photoInput  = document.getElementById('photoInput');
+    const photoGrid   = document.getElementById('photoGrid');
+    const dropZone    = document.getElementById('dropZone');
+    const MAX_PHOTOS  = 5;
+    const MAX_SIZE    = 5 * 1024 * 1024;
+    let uploadedPhotos = []; // { key: string|null, itemEl }
+
+    async function uploadFile(file) {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch('/api/images/upload', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      return data; // { key, url }
+    }
+
+    function addPhotoItem(file) {
+      if (uploadedPhotos.length >= MAX_PHOTOS) return;
+
+      const localUrl = URL.createObjectURL(file);
+      const itemEl = document.createElement('div');
+      itemEl.className = 'photo-item uploading';
+
+      const img = document.createElement('img');
+      img.src = localUrl;
+      img.alt = file.name;
+      itemEl.appendChild(img);
+      photoGrid.appendChild(itemEl);
+
+      const entry = { key: null, itemEl };
+      uploadedPhotos.push(entry);
+
+      function addRemoveBtn() {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'remove-btn';
+        btn.setAttribute('aria-label', 'Remove photo');
+        btn.textContent = '\xd7';
+        btn.addEventListener('click', () => {
+          URL.revokeObjectURL(localUrl);
+          itemEl.remove();
+          uploadedPhotos = uploadedPhotos.filter(p => p !== entry);
+        });
+        itemEl.appendChild(btn);
+      }
+
+      uploadFile(file).then(({ key }) => {
+        entry.key = key;
+        itemEl.classList.remove('uploading');
+        addRemoveBtn();
+      }).catch(err => {
+        itemEl.classList.remove('uploading');
+        uploadedPhotos = uploadedPhotos.filter(p => p !== entry);
+        const errEl = document.createElement('div');
+        errEl.className = 'upload-error';
+        errEl.textContent = err.message || 'Failed';
+        itemEl.appendChild(errEl);
+        addRemoveBtn();
+      });
+    }
+
+    function handleFiles(files) {
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      for (const file of files) {
+        if (uploadedPhotos.length >= MAX_PHOTOS) {
+          showAlert(`Maximum ${MAX_PHOTOS} photos allowed.`, 'error');
+          break;
+        }
+        if (!allowed.includes(file.type)) {
+          showAlert(`${file.name}: only JPEG, PNG, WebP, or GIF images are accepted.`, 'error');
+          continue;
+        }
+        if (file.size > MAX_SIZE) {
+          showAlert(`${file.name}: exceeds the 5 MB size limit.`, 'error');
+          continue;
+        }
+        addPhotoItem(file);
+      }
+    }
+
+    photoInput.addEventListener('change', () => {
+      handleFiles([...photoInput.files]);
+      photoInput.value = '';
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      handleFiles([...e.dataTransfer.files]);
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       alertEl.className = 'alert';
@@ -458,7 +653,8 @@
         registry_name:   form.registry_name.value.trim() || null,
         registry_number: form.registry_number.value.trim() || null,
         microchip_id:    form.microchip_id.value.trim() || null,
-        price_btc:       Number(price_btc)
+        price_btc:       Number(price_btc),
+        photo_keys:      uploadedPhotos.filter(p => p.key).map(p => p.key)
       };
 
       submitBtn.disabled = true;
