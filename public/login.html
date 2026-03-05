@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In &mdash; Bitcoin Pets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f7931a;
+      --orange-dark: #d97b0e;
+      --dark: #1a1a1a;
+      --gray: #444;
+      --light-gray: #f5f5f5;
+      --white: #fff;
+      --radius: 8px;
+      --red: #e53e3e;
+      --green: #38a169;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--dark);
+      background: var(--light-gray);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    nav {
+      background: var(--dark);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-logo span { color: var(--white); }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: #ccc;
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius);
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--white); background: #2e2e2e; }
+
+    .nav-links .btn-signup {
+      background: var(--orange);
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .nav-links .btn-signup:hover { background: var(--orange-dark); }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .card-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .card-header .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--orange);
+      text-decoration: none;
+      letter-spacing: -1px;
+    }
+
+    .card-header .logo span { color: var(--dark); }
+
+    .card-header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-top: 1rem;
+      color: var(--dark);
+    }
+
+    .card-header p {
+      font-size: 0.9rem;
+      color: var(--gray);
+      margin-top: 0.4rem;
+    }
+
+    .form-group { margin-bottom: 1.25rem; }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: var(--dark);
+    }
+
+    input {
+      width: 100%;
+      padding: 0.65rem 0.875rem;
+      border: 1.5px solid #ddd;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      color: var(--dark);
+      transition: border-color 0.15s;
+      background: var(--white);
+    }
+
+    input:focus { outline: none; border-color: var(--orange); }
+    input.error { border-color: var(--red); }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+
+    .alert.visible { display: block; }
+    .alert-error   { background: #fff5f5; color: var(--red);   border: 1px solid #fed7d7; }
+    .alert-success { background: #f0fff4; color: var(--green); border: 1px solid #c6f6d5; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--orange);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      margin-top: 0.5rem;
+    }
+
+    .btn-submit:hover { background: var(--orange-dark); }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .sign-up {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--gray);
+    }
+
+    .sign-up a { color: var(--orange); text-decoration: none; font-weight: 600; }
+    .sign-up a:hover { text-decoration: underline; }
+
+    footer {
+      background: var(--dark);
+      color: #888;
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+    <ul class="nav-links">
+      <li><a href="/browse">Browse Pets</a></li>
+      <li><a href="/sell">Sell a Pet</a></li>
+      <li><a href="/login">Sign In</a></li>
+      <li><a href="/register" class="btn-signup">Sign Up</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="card">
+      <div class="card-header">
+        <a href="/" class="logo">&#8383;<span>itcoin Pets</span></a>
+        <h1>Welcome back</h1>
+        <p>Sign in to your Bitcoin Pets account.</p>
+      </div>
+
+      <div id="alert" class="alert" role="alert"></div>
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="login">Email or username</label>
+          <input type="text" id="login" name="login" autocomplete="username"
+                 placeholder="you@example.com or satoshi" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="current-password"
+                 placeholder="Your password" required />
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">Sign in</button>
+      </form>
+
+      <p class="sign-up">Don&rsquo;t have an account? <a href="/register">Sign up</a></p>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+      &nbsp;&bull;&nbsp;
+      <a href="/privacy">Privacy Policy</a>
+      &nbsp;&bull;&nbsp;
+      <a href="/terms">Terms of Service</a>
+    </p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const form = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const alertEl = document.getElementById('alert');
+
+    function showAlert(msg, type) {
+      alertEl.textContent = msg;
+      alertEl.className = 'alert alert-' + type + ' visible';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertEl.className = 'alert';
+
+      const login    = form.login.value.trim();
+      const password = form.password.value;
+
+      if (!login || !password) {
+        showAlert('Please enter your email/username and password.', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in\u2026';
+
+      try {
+        const res  = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert('Signed in! Redirecting\u2026', 'success');
+          setTimeout(() => { window.location.href = '/'; }, 1000);
+        } else {
+          showAlert(data.error || 'Something went wrong. Please try again.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign in';
+        }
+      } catch {
+        showAlert('Network error. Please check your connection and try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in';
+      }
+    });
+  </script>
+
+</body>
+</html>
