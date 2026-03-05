@@ -232,8 +232,11 @@
     }
 
     function renderCard(pet) {
-      const card = document.createElement('div');
+      const card = document.createElement('a');
       card.className = 'pet-card';
+      card.href = '/pet?id=' + encodeURIComponent(pet.id);
+      card.style.textDecoration = 'none';
+      card.style.color = 'inherit';
 
       if (pet.photo_url) {
         const img = document.createElement('img');
