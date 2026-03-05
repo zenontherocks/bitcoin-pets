@@ -330,7 +330,7 @@
     fetch('/api/me').then(r => r.json()).then(data => {
       if (data.user) {
         document.getElementById('navAuthItem').innerHTML =
-          '<a href="/sell" class="btn-primary">+ Sell a Pet</a>';
+          '<a href="/account">My Account</a>';
       }
     }).catch(() => {});
 

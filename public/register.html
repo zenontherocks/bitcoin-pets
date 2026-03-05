@@ -275,6 +275,9 @@
 
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
+    fetch('/api/me').then(r => r.json()).then(d => {
+      if (d.user) document.getElementById('navAuthItem').innerHTML = '<a href="/account">My Account</a>';
+    }).catch(() => {});
 
     const form = document.getElementById('registerForm');
     const submitBtn = document.getElementById('submitBtn');

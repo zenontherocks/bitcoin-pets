@@ -496,6 +496,8 @@
       if (buyBtn) {
         buyBtn.addEventListener('click', () => {
           document.getElementById('modalAmount').textContent = formatBtc(pet.price_btc);
+          document.getElementById('modalAddress').textContent =
+            pet.seller_btc || 'Contact seller for address';
           document.getElementById('buyModal').classList.add('open');
         });
       }
@@ -525,7 +527,7 @@
     fetch('/api/me').then(r => r.json()).then(data => {
       if (data.user) {
         document.getElementById('navAuthItem').innerHTML =
-          '<a href="/sell" class="btn-primary">+ Sell a Pet</a>';
+          '<a href="/account">My Account</a>';
       }
     }).catch(() => {});
 
