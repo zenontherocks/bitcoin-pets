@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pet Details &mdash; Bitcoin Pets</title>
+  <title>Pet Details &mdash; Bitcoin-Pets.com</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -420,7 +420,7 @@
       }
 
       const { pet, photos } = data;
-      document.title = escHtml(pet.name) + ' \u2014 Bitcoin Pets';
+      document.title = escHtml(pet.name) + ' \u2014 Bitcoin-Pets.com';
 
       const primaryPhoto = photos.find(p => p.is_primary) || photos[0];
 
