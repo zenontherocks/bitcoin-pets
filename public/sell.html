@@ -337,6 +337,46 @@
       .form-grid { grid-template-columns: 1fr; }
       .section { padding: 1.25rem 1rem; }
     }
+  
+    /* ── Mobile Nav ── */
+    .nav-toggle {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 0.4rem;
+      background: none;
+      border: none;
+    }
+    .nav-toggle span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #fff;
+      border-radius: 2px;
+    }
+    @media (max-width: 640px) {
+      nav { height: auto !important; min-height: 56px; position: relative; padding: 0 1rem; }
+      .nav-toggle { display: flex; }
+      .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        background: var(--dark);
+        padding: 0.5rem 1rem 1rem;
+        gap: 0;
+        border-top: 1px solid #2e2e2e;
+        z-index: 99;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links li { width: 100%; }
+      .nav-links a { display: block; padding: 0.75rem 0.5rem; font-size: 1rem; }
+      .nav-links .btn-signup,
+      .nav-links .btn-primary { margin-top: 0.25rem; text-align: center; }
+    }
   </style>
 </head>
 <body>
