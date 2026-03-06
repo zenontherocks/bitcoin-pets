@@ -241,11 +241,18 @@ async function handleGetPet(request, env, id) {
 
   if (!pet) return json({ error: 'Not found' }, 404);
 
-  const pics = await env.DB.prepare(
-    'SELECT url, is_primary FROM pet_pictures WHERE pet_id = ? ORDER BY is_primary DESC'
-  ).bind(id).all();
+  const [pics, activeOrder] = await Promise.all([
+    env.DB.prepare(
+      'SELECT url, is_primary FROM pet_pictures WHERE pet_id = ? ORDER BY is_primary DESC'
+    ).bind(id).all(),
+    pet.status === 'pending'
+      ? env.DB.prepare(
+          "SELECT expires_at FROM orders WHERE pet_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1"
+        ).bind(id).first()
+      : Promise.resolve(null),
+  ]);
 
-  return json({ pet, photos: pics.results || [] });
+  return json({ pet, photos: pics.results || [], order_expires_at: activeOrder?.expires_at ?? null });
 }
 
 async function handleMe(request, env) {
