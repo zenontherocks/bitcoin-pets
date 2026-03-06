@@ -28,54 +28,6 @@
       min-height: 100vh;
     }
 
-    nav {
-      background: var(--dark);
-      padding: 0 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 60px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .nav-logo {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--orange);
-      text-decoration: none;
-      letter-spacing: -0.5px;
-    }
-
-    .nav-logo span { color: var(--white); }
-
-    .nav-links {
-      list-style: none;
-      display: flex;
-      gap: 0.25rem;
-      align-items: center;
-    }
-
-    .nav-links a {
-      color: #ccc;
-      text-decoration: none;
-      font-size: 0.9rem;
-      padding: 0.4rem 0.75rem;
-      border-radius: var(--radius);
-      transition: color 0.15s, background 0.15s;
-    }
-
-    .nav-links a:hover { color: var(--white); background: #2e2e2e; }
-
-    .nav-links .btn-signup {
-      background: var(--orange);
-      color: var(--white);
-      font-weight: 600;
-    }
-
-    .nav-links .btn-signup:hover { background: var(--orange-dark); }
-
     main {
       flex: 1;
       display: flex;
@@ -195,60 +147,10 @@
 
     footer a { color: var(--orange); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
-  
-    /* ── Mobile Nav ── */
-    .nav-toggle {
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      cursor: pointer;
-      padding: 0.4rem;
-      background: none;
-      border: none;
-    }
-    .nav-toggle span {
-      display: block;
-      width: 22px;
-      height: 2px;
-      background: #fff;
-      border-radius: 2px;
-    }
-    @media (max-width: 640px) {
-      nav { height: auto !important; min-height: 56px; position: relative; padding: 0 1rem; }
-      .nav-toggle { display: flex; }
-      .nav-links {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        flex-direction: column;
-        background: var(--dark);
-        padding: 0.5rem 1rem 1rem;
-        gap: 0;
-        border-top: 1px solid #2e2e2e;
-        z-index: 99;
-      }
-      .nav-links.open { display: flex; }
-      .nav-links li { width: 100%; }
-      .nav-links a { display: block; padding: 0.75rem 0.5rem; font-size: 1rem; }
-      .nav-links .btn-signup,
-      .nav-links .btn-primary { margin-top: 0.25rem; text-align: center; }
-    }
   </style>
+  <script src="/navbar.js"></script>
 </head>
 <body>
-
-  <nav>
-    <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
-    <button class="nav-toggle" aria-label="Toggle menu" onclick="this.closest('nav').querySelector('.nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
-    <ul class="nav-links">
-      <li><a href="/browse">Browse Pets</a></li>
-      <li><a href="/sell">Sell a Pet</a></li>
-      <li><a href="/login">Sign In</a></li>
-      <li id="navSignUpItem"><a href="/register" class="btn-signup">Sign Up</a></li>
-    </ul>
-  </nav>
 
   <main>
     <div class="card">
@@ -291,13 +193,6 @@
 
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
-    fetch('/api/me').then(r => r.json()).then(d => {
-      if (d.user) {
-        document.getElementById('navAuthItem').innerHTML = '<a href="/account">My Account</a>';
-        const su = document.getElementById('navSignUpItem');
-        if (su) su.remove();
-      }
-    }).catch(() => {});
 
     const form = document.getElementById('loginForm');
     const submitBtn = document.getElementById('submitBtn');
