@@ -133,7 +133,7 @@ async function handleListPets(request, env, url) {
 
   const speciesFilter = species ? 'AND p.species = ?' : '';
   const binds = species
-    ? [limit + 1, offset, species]
+    ? [species, limit + 1, offset]
     : [limit + 1, offset];
 
   const rows = await env.DB.prepare(`
