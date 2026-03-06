@@ -11,3 +11,6 @@ database_id = "20b9a4ee-5b6c-4aea-bb78-709b63df26e9"
 [[r2_buckets]]
 binding = "IMAGES"
 bucket_name = "bitcoin-pets-images"
+
+[triggers]
+crons = ["*/5 * * * *"]

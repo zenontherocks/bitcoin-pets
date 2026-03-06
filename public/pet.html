@@ -222,7 +222,7 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.55);
       z-index: 200;
       align-items: center;
       justify-content: center;
@@ -233,7 +233,7 @@
     .modal {
       background: var(--white);
       border-radius: 12px;
-      max-width: 440px;
+      max-width: 460px;
       width: 100%;
       padding: 2rem;
       position: relative;
@@ -252,36 +252,39 @@
     }
     .modal-close:hover { color: var(--dark); }
 
-    .modal h2 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .modal .modal-sub { font-size: 0.875rem; color: var(--gray); margin-bottom: 1.5rem; }
+    .modal h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .modal .modal-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 1.25rem; }
 
-    .btc-address-box {
-      background: #f5f5f5;
-      border-radius: var(--radius);
-      padding: 1rem;
+    .invoice-amount {
       text-align: center;
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--orange);
       margin-bottom: 1rem;
     }
-    .btc-address-label { font-size: 0.75rem; color: var(--gray); margin-bottom: 0.5rem; }
-    .btc-address {
+    .invoice-amount span { font-size: 1rem; color: var(--gray); font-weight: 600; }
+
+    .qr-wrap { text-align: center; margin-bottom: 1rem; }
+    .qr-wrap img { border-radius: 8px; border: 4px solid #f5f5f5; }
+
+    .invoice-addr-box {
+      background: #f5f5f5;
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .invoice-addr-label { font-size: 0.72rem; color: var(--gray); margin-bottom: 0.25rem; }
+    .invoice-addr {
       font-family: monospace;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       word-break: break-all;
       color: var(--dark);
       font-weight: 600;
     }
 
-    .btc-amount-big {
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--orange);
-      margin-bottom: 1.25rem;
-    }
-
     .copy-btn {
       width: 100%;
-      padding: 0.65rem;
+      padding: 0.6rem;
       background: var(--dark);
       color: #fff;
       border: none;
@@ -294,11 +297,26 @@
     }
     .copy-btn:hover { background: #333; }
 
+    .invoice-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; }
+    .countdown { font-size: 0.8rem; color: var(--gray); }
+    .countdown.urgent { color: #e53e3e; font-weight: 700; }
+    .poll-status { font-size: 0.75rem; color: #aaa; }
+
+    .invoice-success { text-align: center; padding: 1.5rem 0.5rem; }
+    .invoice-success .check { font-size: 3rem; margin-bottom: 0.75rem; }
+    .invoice-success h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: #38a169; }
+    .invoice-success p { font-size: 0.875rem; color: var(--gray); line-height: 1.6; }
+    .invoice-success .tx-link { font-size: 0.78rem; word-break: break-all; color: var(--orange); text-decoration: none; }
+    .invoice-success .tx-link:hover { text-decoration: underline; }
+
+    .invoice-error { text-align: center; padding: 1rem 0; font-size: 0.875rem; color: #e53e3e; }
+
     .modal-note {
-      font-size: 0.78rem;
-      color: #aaa;
+      font-size: 0.75rem;
+      color: #bbb;
       text-align: center;
       line-height: 1.5;
+      margin-top: 0.75rem;
     }
 
     /* ── State ── */
@@ -325,19 +343,37 @@
     <div class="state-box" id="loadingState"><p>Loading&hellip;</p></div>
   </main>
 
-  <!-- Buy modal -->
+  <!-- Invoice modal -->
   <div class="modal-overlay" id="buyModal">
     <div class="modal">
       <button class="modal-close" id="modalClose">&times;</button>
-      <h2>Purchase this Pet</h2>
-      <p class="modal-sub">Send the exact amount in Bitcoin to complete this purchase. Contact the seller after payment.</p>
-      <div class="btc-amount-big" id="modalAmount"></div>
-      <div class="btc-address-box">
-        <div class="btc-address-label">Seller&rsquo;s Bitcoin Address</div>
-        <div class="btc-address" id="modalAddress">Contact seller for address</div>
+      <div id="invoiceView">
+        <h2>Complete Your Purchase</h2>
+        <p class="modal-sub">Scan the QR code or copy the address below and send the exact amount from your Bitcoin wallet.</p>
+        <div class="invoice-amount" id="invoiceAmount"></div>
+        <div class="qr-wrap"><img id="invoiceQR" src="" alt="Bitcoin QR code" width="200" height="200" /></div>
+        <div class="invoice-addr-box">
+          <div class="invoice-addr-label">Bitcoin Address</div>
+          <div class="invoice-addr" id="invoiceAddr"></div>
+        </div>
+        <button class="copy-btn" id="copyBtn">Copy Address</button>
+        <div class="invoice-footer">
+          <span class="countdown" id="countdown"></span>
+          <span class="poll-status" id="pollStatus">Checking for payment&hellip;</span>
+        </div>
+        <p class="modal-note">Payment is detected automatically after 1 on-chain confirmation (~10 min). This listing will close once paid.</p>
       </div>
-      <button class="copy-btn" id="copyBtn">Copy Address</button>
-      <p class="modal-note">This marketplace facilitates peer-to-peer listings. Always verify the pet and seller before sending funds.</p>
+      <div id="successView" style="display:none">
+        <div class="invoice-success">
+          <div class="check">&#10003;</div>
+          <h3>Payment Confirmed!</h3>
+          <p>Your payment was received and this listing has been closed. Contact the seller to arrange pickup or delivery.</p>
+          <p id="txLinkWrap" style="margin-top:0.75rem"></p>
+        </div>
+      </div>
+      <div id="errorView" style="display:none">
+        <div class="invoice-error" id="errorMsg"></div>
+      </div>
     </div>
   </div>
 
@@ -491,30 +527,125 @@
         });
       });
 
-      // Buy button
+      // Buy button — create invoice
       const buyBtn = document.getElementById('buyBtn');
       if (buyBtn) {
-        buyBtn.addEventListener('click', () => {
-          document.getElementById('modalAmount').textContent = formatBtc(pet.price_btc);
-          document.getElementById('modalAddress').textContent =
-            pet.seller_btc || 'Contact seller for address';
-          document.getElementById('buyModal').classList.add('open');
-        });
+        buyBtn.addEventListener('click', () => openInvoice(pet));
       }
     }
 
-    // Modal
-    document.getElementById('modalClose').addEventListener('click', () => {
+    // ── Invoice flow ──────────────────────────────────────────────────────────
+
+    let countdownInterval = null;
+    let pollInterval = null;
+
+    function closeModal() {
       document.getElementById('buyModal').classList.remove('open');
-    });
-    document.getElementById('buyModal').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('buyModal')) {
-        document.getElementById('buyModal').classList.remove('open');
+      clearInterval(countdownInterval);
+      clearInterval(pollInterval);
+    }
+
+    function showView(name) {
+      ['invoiceView', 'successView', 'errorView'].forEach(id => {
+        document.getElementById(id).style.display = id === name ? '' : 'none';
+      });
+    }
+
+    function startCountdown(expiresAt) {
+      const el = document.getElementById('countdown');
+      function tick() {
+        const secs = Math.max(0, Math.floor((new Date(expiresAt) - Date.now()) / 1000));
+        const m = String(Math.floor(secs / 60)).padStart(2, '0');
+        const s = String(secs % 60).padStart(2, '0');
+        el.textContent = `Expires in ${m}:${s}`;
+        el.className = 'countdown' + (secs < 120 ? ' urgent' : '');
+        if (secs === 0) {
+          clearInterval(countdownInterval);
+          el.textContent = 'Invoice expired';
+          document.getElementById('pollStatus').textContent = 'Refresh the page to try again.';
+          clearInterval(pollInterval);
+        }
       }
+      tick();
+      countdownInterval = setInterval(tick, 1000);
+    }
+
+    function startPolling(orderId) {
+      async function check() {
+        try {
+          const r = await fetch(`/api/orders/${orderId}`);
+          const { order } = await r.json();
+          if (order.status === 'paid') {
+            clearInterval(pollInterval);
+            clearInterval(countdownInterval);
+            showView('successView');
+            // Show mempool link
+            if (order.tx_id) {
+              document.getElementById('txLinkWrap').innerHTML =
+                `<a class="tx-link" href="https://mempool.space/tx/${order.tx_id}" target="_blank" rel="noopener">View transaction on mempool.space</a>`;
+            }
+            // Disable buy button on the page
+            const btn = document.getElementById('buyBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Sold'; }
+          } else if (order.status === 'expired') {
+            clearInterval(pollInterval);
+            clearInterval(countdownInterval);
+            document.getElementById('countdown').textContent = 'Invoice expired';
+            document.getElementById('pollStatus').textContent = 'Close and click Buy to try again.';
+          }
+        } catch { /* silent — will retry */ }
+      }
+      check();
+      pollInterval = setInterval(check, 30000);
+    }
+
+    async function openInvoice(pet) {
+      clearInterval(countdownInterval);
+      clearInterval(pollInterval);
+      showView('invoiceView');
+      document.getElementById('invoiceAmount').innerHTML = `${formatBtc(pet.price_btc)} <span>BTC</span>`;
+      document.getElementById('invoiceAddr').textContent = '';
+      document.getElementById('invoiceQR').src = '';
+      document.getElementById('countdown').textContent = '';
+      document.getElementById('pollStatus').textContent = 'Creating invoice…';
+      document.getElementById('buyModal').classList.add('open');
+
+      let order;
+      try {
+        const res = await fetch(`/api/pets/${pet.id}/order`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+          showView('errorView');
+          document.getElementById('errorMsg').textContent = data.error || 'Could not create invoice.';
+          return;
+        }
+        order = data.order;
+      } catch {
+        showView('errorView');
+        document.getElementById('errorMsg').textContent = 'Network error. Please try again.';
+        return;
+      }
+
+      const bip21 = `bitcoin:${order.pay_address}?amount=${order.amount_btc}&label=Bitcoin+Pets`;
+      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(bip21)}&size=200x200&margin=10`;
+      document.getElementById('invoiceQR').src = qrSrc;
+      document.getElementById('invoiceAddr').textContent = order.pay_address;
+      document.getElementById('pollStatus').textContent = 'Checking for payment…';
+
+      startCountdown(order.expires_at);
+      startPolling(order.id);
+    }
+
+    // Modal close
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('buyModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('buyModal')) closeModal();
     });
+
+    // Copy address
     document.getElementById('copyBtn').addEventListener('click', () => {
-      const addr = document.getElementById('modalAddress').textContent;
-      if (addr && addr !== 'Contact seller for address') {
+      const addr = document.getElementById('invoiceAddr').textContent;
+      if (addr) {
         navigator.clipboard.writeText(addr).then(() => {
           const btn = document.getElementById('copyBtn');
           btn.textContent = 'Copied!';

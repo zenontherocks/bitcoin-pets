@@ -19,6 +19,51 @@ export default {
       return env.ASSETS.fetch(new Request(url.toString()));
     }
     return response;
+  },
+
+  async scheduled(event, env, ctx) {
+    const now = new Date().toISOString();
+
+    // Expire overdue orders and revert pet status to available
+    const expired = await env.DB.prepare(
+      "SELECT id, pet_id FROM orders WHERE status='pending' AND expires_at <= ?"
+    ).bind(now).all();
+    for (const o of (expired.results || [])) {
+      await env.DB.prepare("UPDATE orders SET status='expired' WHERE id=?").bind(o.id).run();
+      await env.DB.prepare(
+        "UPDATE pets SET status='available', updated_at=datetime('now') WHERE id=? AND status='pending'"
+      ).bind(o.pet_id).run();
+    }
+
+    // Check pending orders against mempool.space
+    const pending = await env.DB.prepare(
+      "SELECT id, pet_id, pay_address, amount_btc FROM orders WHERE status='pending' AND expires_at > ?"
+    ).bind(now).all();
+    for (const order of (pending.results || [])) {
+      try {
+        const res = await fetch(
+          `https://mempool.space/api/address/${order.pay_address}/txs/chain`
+        );
+        if (!res.ok) continue;
+        const txs = await res.json();
+        const targetSats = Math.floor(order.amount_btc * 1e8);
+        for (const tx of txs) {
+          if (!tx.status?.confirmed) continue;
+          const received = (tx.vout || [])
+            .filter(o => o.scriptpubkey_address === order.pay_address)
+            .reduce((s, o) => s + o.value, 0);
+          if (received >= targetSats) {
+            await env.DB.prepare(
+              "UPDATE orders SET status='paid', tx_id=?, paid_at=datetime('now') WHERE id=?"
+            ).bind(tx.txid, order.id).run();
+            await env.DB.prepare(
+              "UPDATE pets SET status='sold', updated_at=datetime('now') WHERE id=?"
+            ).bind(order.pet_id).run();
+            break;
+          }
+        }
+      } catch { /* skip on network error — will retry next cron run */ }
+    }
   }
 };
 
@@ -53,6 +98,14 @@ async function handleApi(request, env, url) {
   }
   if (url.pathname === '/api/pets' && request.method === 'POST') {
     return handleCreatePet(request, env);
+  }
+  const petOrderMatch = url.pathname.match(/^\/api\/pets\/([a-zA-Z0-9-]+)\/order$/);
+  if (petOrderMatch && request.method === 'POST') {
+    return handleCreateOrder(request, env, petOrderMatch[1]);
+  }
+  const orderMatch = url.pathname.match(/^\/api\/orders\/([a-zA-Z0-9-]+)$/);
+  if (orderMatch && request.method === 'GET') {
+    return handleGetOrder(request, env, orderMatch[1]);
   }
   if (url.pathname === '/api/images/upload' && request.method === 'POST') {
     return handleImageUpload(request, env);
@@ -256,6 +309,44 @@ async function handleCreatePet(request, env) {
   }
 
   return json({ success: true, id }, 201);
+}
+
+async function handleCreateOrder(request, env, petId) {
+  // Fetch pet with seller's bitcoin address (listing-level or account-level)
+  const pet = await env.DB.prepare(`
+    SELECT p.id, p.name, p.status, p.price_btc,
+      COALESCE(p.bitcoin_address, u.bitcoin_address) AS pay_address
+    FROM pets p JOIN users u ON u.id = p.user_id
+    WHERE p.id = ?
+  `).bind(petId).first();
+
+  if (!pet) return json({ error: 'Listing not found' }, 404);
+  if (pet.status !== 'available') return json({ error: 'This listing is no longer available' }, 409);
+  const payAddress = pet.pay_address;
+  if (!payAddress) {
+    return json({ error: 'Seller has not set a Bitcoin address for this listing. Contact them directly.' }, 422);
+  }
+
+  const id = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes
+
+  await env.DB.prepare(
+    "INSERT INTO orders (id, pet_id, pay_address, amount_btc, expires_at) VALUES (?, ?, ?, ?, ?)"
+  ).bind(id, petId, payAddress, pet.price_btc, expiresAt).run();
+
+  await env.DB.prepare(
+    "UPDATE pets SET status='pending', updated_at=datetime('now') WHERE id=?"
+  ).bind(petId).run();
+
+  return json({ order: { id, pay_address: payAddress, amount_btc: pet.price_btc, expires_at: expiresAt, pet_name: pet.name } }, 201);
+}
+
+async function handleGetOrder(request, env, orderId) {
+  const order = await env.DB.prepare(
+    "SELECT id, pet_id, pay_address, amount_btc, status, expires_at, paid_at, tx_id FROM orders WHERE id=?"
+  ).bind(orderId).first();
+  if (!order) return json({ error: 'Order not found' }, 404);
+  return json({ order });
 }
 
 async function handleImageUpload(request, env) {

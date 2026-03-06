@@ -60,3 +60,16 @@ CREATE TABLE sessions (
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS orders (
+  id          TEXT PRIMARY KEY,
+  pet_id      TEXT NOT NULL REFERENCES pets(id),
+  pay_address TEXT NOT NULL,
+  amount_btc  REAL NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'pending'
+              CHECK(status IN ('pending','paid','expired')),
+  tx_id       TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at  TEXT NOT NULL,
+  paid_at     TEXT
+);
