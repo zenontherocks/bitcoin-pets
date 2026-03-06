@@ -79,10 +79,18 @@
     .pet-info { min-width: 0; }
     .pet-name { font-weight: 700; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pet-meta { font-size: 0.78rem; color: var(--gray); margin-top: 0.1rem; }
+    .pet-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; flex-shrink: 0; }
     .pet-badge {
       font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;
-      border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+      border-radius: 999px; white-space: nowrap;
     }
+    .btn-end-listing {
+      font-size: 0.68rem; font-weight: 700; color: var(--red);
+      background: #fff5f5; border: 1px solid #fca5a5;
+      border-radius: 999px; padding: 0.2rem 0.55rem;
+      cursor: pointer; white-space: nowrap; line-height: 1.4;
+    }
+    .btn-end-listing:hover { background: #fee2e2; }
     .badge-available { background: #d4f5e2; color: #276749; }
     .badge-pending   { background: #fef3e2; color: #92400e; }
     .badge-sold      { background: #f0f0f0; color: #888; }
@@ -346,6 +354,9 @@
       const expiryHtml = p.status === 'pending' && p.order_expires_at
         ? `<div class="pet-expiry" data-expires="${p.order_expires_at}">Calculating expiry…</div>`
         : '';
+      const endBtn = p.status === 'available'
+        ? `<button class="btn-end-listing" onclick="return endListing(event,'${p.id}')">End Listing</button>`
+        : '';
       return `<a class="pet-row" href="/pet?id=${p.id}">
         ${thumb}
         <div class="pet-info">
@@ -353,7 +364,7 @@
           <div class="pet-meta">${meta ? meta + (priceStr ? ' · ' : '') : ''}${priceStr}</div>
           ${expiryHtml}
         </div>
-        ${badge}
+        <div class="pet-right">${badge}${endBtn}</div>
       </a>`;
     }).join('') + '</div>';
 
@@ -373,6 +384,21 @@
 
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function endListing(e, petId) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm('End this listing? It will be removed and buyers will no longer see it.')) return false;
+    try {
+      const res = await fetch(`/api/pets/${petId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || 'Failed to end listing'); return false; }
+      loadListings();
+    } catch {
+      alert('Network error. Please try again.');
+    }
+    return false;
   }
 
   loadAccount();

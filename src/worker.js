@@ -99,6 +99,9 @@ async function handleApi(request, env, url) {
   if (petMatch && request.method === 'GET') {
     return handleGetPet(request, env, petMatch[1]);
   }
+  if (petMatch && request.method === 'DELETE') {
+    return handleEndListing(request, env, petMatch[1]);
+  }
   if (url.pathname === '/api/pets' && request.method === 'POST') {
     return handleCreatePet(request, env);
   }
@@ -340,6 +343,24 @@ async function handleCreatePet(request, env) {
   }
 
   return json({ success: true, id }, 201);
+}
+
+async function handleEndListing(request, env, petId) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'Unauthorized' }, 401);
+
+  const userRow = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(session.username).first();
+  if (!userRow) return json({ error: 'Not found' }, 404);
+
+  const pet = await env.DB.prepare('SELECT id, status, user_id FROM pets WHERE id = ?').bind(petId).first();
+  if (!pet) return json({ error: 'Listing not found' }, 404);
+  if (pet.user_id !== userRow.id) return json({ error: 'Forbidden' }, 403);
+  if (pet.status !== 'available') return json({ error: 'Only available listings can be ended' }, 409);
+
+  await env.DB.prepare('DELETE FROM pet_pictures WHERE pet_id = ?').bind(petId).run();
+  await env.DB.prepare('DELETE FROM pets WHERE id = ?').bind(petId).run();
+
+  return json({ success: true });
 }
 
 async function handleCreateOrder(request, env, petId) {
