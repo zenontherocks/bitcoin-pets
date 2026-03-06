@@ -1,2 +1,0 @@
-# Protect CI/CD workflows from being modified by automated branches
-.github/workflows/ @zenontherocks
