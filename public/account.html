@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Account &mdash; Bitcoin Pets</title>
+  <title>My Account &mdash; Bitcoin-Pets.com</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -247,7 +247,7 @@
     if (res.status === 401) { location.href = '/login'; return; }
     const { user } = await res.json();
 
-    document.title = user.username + ' \u2014 Bitcoin Pets';
+    document.title = user.username + ' \u2014 Bitcoin-Pets.com';
     setVal('username', user.username);
     setVal('email', user.email);
     setVal('phone', user.phone);
