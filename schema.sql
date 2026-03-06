@@ -36,7 +36,8 @@ CREATE TABLE pets (
   registry_name TEXT,                            -- e.g. AKC, CFA, TICA
   registry_number TEXT,
   microchip_id TEXT,
-  price_btc REAL,                                -- asking price in BTC
+  price_btc REAL,
+  bitcoin_address TEXT,                          -- per-listing receive address (overrides user default)                                -- asking price in BTC
   status TEXT NOT NULL DEFAULT 'available'
     CHECK(status IN ('available', 'pending', 'sold')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

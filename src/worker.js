@@ -179,7 +179,8 @@ async function handleChangePassword(request, env) {
 
 async function handleGetPet(request, env, id) {
   const pet = await env.DB.prepare(`
-    SELECT p.*, u.username AS seller, u.bitcoin_address AS seller_btc
+    SELECT p.*, u.username AS seller,
+      COALESCE(p.bitcoin_address, u.bitcoin_address) AS seller_btc
     FROM pets p
     JOIN users u ON u.id = p.user_id
     WHERE p.id = ?
@@ -213,7 +214,7 @@ async function handleCreatePet(request, env) {
 
   const { name, species, breed, date_of_birth, weight_lbs, gender, color,
           description, health_info, vaccinations, registry_name,
-          registry_number, microchip_id, price_btc, photo_keys } = body;
+          registry_number, microchip_id, price_btc, bitcoin_address, photo_keys } = body;
 
   if (!name || !name.trim()) return json({ error: 'Pet name is required' }, 400);
   if (!species || !species.trim()) return json({ error: 'Species is required' }, 400);
@@ -229,8 +230,8 @@ async function handleCreatePet(request, env) {
   await env.DB.prepare(`
     INSERT INTO pets (id, user_id, name, species, breed, date_of_birth, weight_lbs,
       gender, color, description, health_info, vaccinations,
-      registry_name, registry_number, microchip_id, price_btc)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      registry_name, registry_number, microchip_id, price_btc, bitcoin_address)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, userRow.id,
     name.trim(), species.trim(),
@@ -240,7 +241,7 @@ async function handleCreatePet(request, env) {
     description || null, health_info || null,
     vaccinations || null, registry_name || null,
     registry_number || null, microchip_id || null,
-    Number(price_btc)
+    Number(price_btc), bitcoin_address || null
   ).run();
 
   if (Array.isArray(photo_keys) && photo_keys.length > 0) {
