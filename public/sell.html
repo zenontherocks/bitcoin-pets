@@ -464,6 +464,62 @@
     const authGate = document.getElementById('authGate');
     const form     = document.getElementById('sellForm');
     const submitBtn = document.getElementById('submitBtn');
+    const photoInput = document.getElementById('photoInput');
+    const dropZone   = document.getElementById('dropZone');
+    const photoGrid  = document.getElementById('photoGrid');
+
+    const MAX_PHOTOS = 5;
+    const MAX_SIZE   = 5 * 1024 * 1024;
+    const uploadedPhotos = [];
+
+    function addPhotoItem(file) {
+      const entry = { key: null };
+      uploadedPhotos.push(entry);
+
+      const item = document.createElement('div');
+      item.className = 'photo-item uploading';
+
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      item.appendChild(img);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'remove-btn';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', () => {
+        item.remove();
+        const idx = uploadedPhotos.indexOf(entry);
+        if (idx !== -1) uploadedPhotos.splice(idx, 1);
+      });
+      item.appendChild(removeBtn);
+
+      photoGrid.appendChild(item);
+
+      const fd = new FormData();
+      fd.append('image', file);
+      fetch('/api/images/upload', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+          if (data.key) {
+            entry.key = data.key;
+            item.classList.remove('uploading');
+          } else {
+            const errEl = document.createElement('div');
+            errEl.className = 'upload-error';
+            errEl.textContent = data.error || 'Upload failed';
+            item.appendChild(errEl);
+            item.classList.remove('uploading');
+          }
+        })
+        .catch(() => {
+          const errEl = document.createElement('div');
+          errEl.className = 'upload-error';
+          errEl.textContent = 'Upload failed';
+          item.appendChild(errEl);
+          item.classList.remove('uploading');
+        });
+    }
 
     function showAlert(msg, type) {
       alertEl.textContent = msg;
