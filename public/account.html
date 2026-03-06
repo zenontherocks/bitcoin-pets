@@ -62,6 +62,46 @@
 
     .logout-row { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
 
+    .pet-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .pet-row {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 0.85rem;
+      align-items: center;
+      padding: 0.75rem;
+      border-radius: var(--radius);
+      background: var(--light-gray);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s;
+    }
+    .pet-row:hover { background: #ebebeb; }
+    .pet-thumb {
+      width: 56px; height: 56px; border-radius: 6px;
+      object-fit: cover; display: block; background: #ddd;
+    }
+    .pet-thumb-placeholder {
+      width: 56px; height: 56px; border-radius: 6px;
+      background: #e0e0e0; display: flex; align-items: center;
+      justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .pet-info { min-width: 0; }
+    .pet-name { font-weight: 700; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pet-meta { font-size: 0.78rem; color: var(--gray); margin-top: 0.1rem; }
+    .pet-badge {
+      font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;
+      border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+    }
+    .badge-available { background: #d4f5e2; color: #276749; }
+    .badge-pending   { background: #fef3e2; color: #92400e; }
+    .badge-sold      { background: #f0f0f0; color: #888; }
+    .pet-expiry { font-size: 0.7rem; color: #d97b0e; margin-top: 0.15rem; }
+    .pet-list-empty { font-size: 0.9rem; color: var(--gray); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .card-header-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); }
+    .btn-new-listing { font-size: 0.8rem; font-weight: 700; color: var(--orange); text-decoration: none; }
+    .btn-new-listing:hover { text-decoration: underline; }
+
     footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
     footer a { color: var(--orange); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
@@ -172,6 +212,15 @@
       <span class="status-msg" id="passwordStatus"></span>
     </div>
   </form>
+
+  <!-- My Listings -->
+  <div class="card" id="listingsCard">
+    <div class="card-header">
+      <span class="card-header-title">My Listings</span>
+      <a href="/sell" class="btn-new-listing">+ New Listing</a>
+    </div>
+    <div id="petList"><p class="pet-list-empty">Loading&hellip;</p></div>
+  </div>
 
   <!-- Sign out -->
   <div class="card">
@@ -288,7 +337,63 @@
     location.href = '/';
   });
 
+  async function loadListings() {
+    const res = await fetch('/api/account/pets');
+    if (!res.ok) return;
+    const { pets } = await res.json();
+    const el = document.getElementById('petList');
+
+    if (!pets.length) {
+      el.innerHTML = '<p class="pet-list-empty">You have no listings yet. <a href="/sell" style="color:var(--orange)">Create one</a></p>';
+      return;
+    }
+
+    const speciesEmoji = { dog:'🐶', cat:'🐱', bird:'🐦', fish:'🐠', reptile:'🦎', 'small animal':'🐹', other:'🐾' };
+    const badgeClass = { available:'badge-available', pending:'badge-pending', sold:'badge-sold' };
+    const badgeLabel = { available:'Available', pending:'Pending', sold:'Sold' };
+
+    el.innerHTML = '<div class="pet-list">' + pets.map(p => {
+      const emoji = speciesEmoji[(p.species || '').toLowerCase()] || '🐾';
+      const thumb = p.photo_url
+        ? `<img class="pet-thumb" src="${p.photo_url}" alt="${escHtml(p.name)}" loading="lazy" />`
+        : `<div class="pet-thumb-placeholder">${emoji}</div>`;
+      const badge = `<span class="pet-badge ${badgeClass[p.status] || ''}">${badgeLabel[p.status] || p.status}</span>`;
+      const priceStr = p.price_btc != null ? `${Number(p.price_btc).toFixed(8).replace(/\.?0+$/, '')} BTC` : '';
+      const meta = [p.species, p.breed].filter(Boolean).map(s => escHtml(s)).join(' · ');
+      const expiryHtml = p.status === 'pending' && p.order_expires_at
+        ? `<div class="pet-expiry" data-expires="${p.order_expires_at}">Calculating expiry…</div>`
+        : '';
+      return `<a class="pet-row" href="/pet?id=${p.id}">
+        ${thumb}
+        <div class="pet-info">
+          <div class="pet-name">${escHtml(p.name)}</div>
+          <div class="pet-meta">${meta ? meta + (priceStr ? ' · ' : '') : ''}${priceStr}</div>
+          ${expiryHtml}
+        </div>
+        ${badge}
+      </a>`;
+    }).join('') + '</div>';
+
+    // Live countdown for pending listings
+    document.querySelectorAll('[data-expires]').forEach(el => {
+      function tick() {
+        const secs = Math.max(0, Math.floor((new Date(el.dataset.expires) - Date.now()) / 1000));
+        if (secs === 0) { el.textContent = 'Invoice expired'; return; }
+        const m = String(Math.floor(secs / 60)).padStart(2, '0');
+        const s = String(secs % 60).padStart(2, '0');
+        el.textContent = `Invoice expires in ${m}:${s}`;
+      }
+      tick();
+      setInterval(tick, 1000);
+    });
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   loadAccount();
+  loadListings();
 </script>
 </body>
 </html>

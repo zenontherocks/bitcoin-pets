@@ -80,6 +80,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/me' && request.method === 'GET') {
     return handleMe(request, env);
   }
+  if (url.pathname === '/api/account/pets' && request.method === 'GET') {
+    return handleGetAccountPets(request, env);
+  }
   if (url.pathname === '/api/account' && request.method === 'GET') {
     return handleGetAccount(request, env);
   }
@@ -160,6 +163,27 @@ async function handleGetAccount(request, env) {
   ).bind(session.username).first();
   if (!user) return json({ error: 'Not found' }, 404);
   return json({ user });
+}
+
+async function handleGetAccountPets(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'Unauthorized' }, 401);
+
+  const userRow = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(session.username).first();
+  if (!userRow) return json({ error: 'Not found' }, 404);
+
+  const rows = await env.DB.prepare(`
+    SELECT p.id, p.name, p.species, p.breed, p.price_btc, p.status, p.created_at,
+           pp.url AS photo_url,
+           o.expires_at AS order_expires_at
+    FROM pets p
+    LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
+    LEFT JOIN orders o ON o.pet_id = p.id AND o.status = 'pending'
+    WHERE p.user_id = ?
+    ORDER BY p.created_at DESC
+  `).bind(userRow.id).all();
+
+  return json({ pets: rows.results || [] });
 }
 
 async function handleUpdateAccount(request, env) {
