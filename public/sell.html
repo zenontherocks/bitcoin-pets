@@ -119,6 +119,7 @@
     .form-grid .full { grid-column: 1 / -1; }
 
     .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-hint { font-size: 0.8rem; color: #888; margin-top: 0.1rem; line-height: 1.5; }
 
     label {
       font-size: 0.85rem;
@@ -479,6 +480,15 @@
           </div>
         </div>
 
+        <div class="section">
+          <div class="section-title">Payment</div>
+          <div class="form-group">
+            <label for="bitcoin_address">Bitcoin address for this listing</label>
+            <input type="text" id="bitcoin_address" name="bitcoin_address" placeholder="bc1q…" autocomplete="off" spellcheck="false" />
+            <div class="form-hint">For privacy, use a <strong>fresh address</strong> from your wallet for each listing &mdash; your wallet generates unlimited unique addresses. Leave blank to use the default address from your account.</div>
+          </div>
+        </div>
+
         <div class="form-actions">
           <button type="submit" class="btn-submit" id="submitBtn">Publish listing</button>
           <a href="/" class="btn-cancel">Cancel</a>
@@ -521,6 +531,12 @@
           formWrap.style.display = '';
           document.getElementById('navAuthItem').innerHTML =
             '<a href="/account">My Account</a>';
+          // Pre-fill BTC address from account default
+          fetch('/api/account').then(r => r.json()).then(d => {
+            if (d.user && d.user.bitcoin_address) {
+              document.getElementById('bitcoin_address').value = d.user.bitcoin_address;
+            }
+          }).catch(() => {});
           const su = document.getElementById('navSignUpItem');
           if (su) su.remove();
         } else {
@@ -658,6 +674,7 @@
         registry_number: form.registry_number.value.trim() || null,
         microchip_id:    form.microchip_id.value.trim() || null,
         price_btc:       Number(price_btc),
+        bitcoin_address: form.bitcoin_address.value.trim() || null,
         photo_keys:      uploadedPhotos.filter(p => p.key).map(p => p.key)
       };
 
