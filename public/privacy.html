@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy &mdash; Bitcoin Pets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f7931a; --orange-dark: #d97b0e; --dark: #1a1a1a; --gray: #555;
+      --border: #ddd; --light-gray: #f5f5f5; --white: #fff; --radius: 8px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--dark); background: var(--light-gray); display: flex; flex-direction: column; min-height: 100vh; }
+
+    nav { background: var(--dark); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-size: 1.3rem; font-weight: 700; color: var(--orange); text-decoration: none; }
+    .nav-logo span { color: #fff; }
+    .nav-links { list-style: none; display: flex; gap: 0.25rem; align-items: center; }
+    .nav-links a { color: #ccc; text-decoration: none; font-size: 0.9rem; padding: 0.4rem 0.75rem; border-radius: var(--radius); transition: color 0.15s, background 0.15s; }
+    .nav-links a:hover { color: #fff; background: #2e2e2e; }
+    .nav-links .btn-primary { background: var(--orange); color: #fff; font-weight: 600; }
+    .nav-links .btn-primary:hover { background: var(--orange-dark); }
+
+    main { flex: 1; max-width: 760px; width: 100%; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; }
+
+    h1 { font-size: 2rem; font-weight: 900; margin-bottom: 0.4rem; }
+    .updated { font-size: 0.85rem; color: #aaa; margin-bottom: 2.5rem; }
+
+    .doc h2 { font-size: 1.1rem; font-weight: 800; margin: 2rem 0 0.6rem; }
+    .doc p, .doc li { font-size: 0.95rem; color: var(--gray); line-height: 1.8; }
+    .doc p + p { margin-top: 0.75rem; }
+    .doc ul { padding-left: 1.4rem; margin-top: 0.5rem; }
+    .doc ul li { margin-bottom: 0.3rem; }
+
+    footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+  <ul class="nav-links">
+    <li><a href="/browse">Browse Pets</a></li>
+    <li><a href="/sell" class="btn-primary">+ Sell a Pet</a></li>
+    <li id="navAuthItem"><a href="/login">Sign In</a></li>
+    <li id="navSignUpItem"><a href="/register">Sign Up</a></li>
+  </ul>
+</nav>
+
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: March 2026</p>
+
+  <div class="doc">
+    <p>Bitcoin Pets ("we", "us", or "our") operates the Bitcoin Pets marketplace. This Privacy Policy explains what information we collect, how we use it, and your rights with respect to that information.</p>
+
+    <h2>1. Information We Collect</h2>
+    <p>When you create an account we collect:</p>
+    <ul>
+      <li>Username and email address</li>
+      <li>A hashed (non-reversible) version of your password &mdash; we never store your password in plain text</li>
+      <li>Optional profile information you choose to provide: phone number, shipping address, and Bitcoin wallet address</li>
+    </ul>
+    <p>When you create a listing we collect the listing content you submit: pet name, species, breed, description, photos, and asking price.</p>
+    <p>We do not collect payment information. Bitcoin transactions occur directly between buyers and sellers on the Bitcoin network; we have no visibility into individual transactions.</p>
+
+    <h2>2. How We Use Your Information</h2>
+    <ul>
+      <li>To authenticate you and maintain your session</li>
+      <li>To display your listings and profile information to other users</li>
+      <li>To allow buyers to contact you regarding your listings</li>
+      <li>To operate, maintain, and improve the marketplace</li>
+    </ul>
+    <p>We do not sell, rent, or trade your personal information to third parties. We do not serve advertising.</p>
+
+    <h2>3. Information Visible to Other Users</h2>
+    <p>Your username is displayed alongside your listings. Your Bitcoin wallet address, if provided, is shown on your active listings so buyers can send payment. Other profile fields (email, phone, shipping address) are stored privately and are not publicly displayed.</p>
+
+    <h2>4. Cookies and Sessions</h2>
+    <p>We use a single session cookie to keep you logged in. This cookie is HTTP-only, scoped to this site, and expires after 30 days of inactivity. We do not use tracking cookies, analytics cookies, or third-party cookies.</p>
+
+    <h2>5. Data Retention</h2>
+    <p>Your account data is retained for as long as your account exists. Listings you remove are deleted from public view but may remain in our database backups for a short period. You may request deletion of your account and associated data by contacting us.</p>
+
+    <h2>6. Security</h2>
+    <p>Passwords are stored as SHA-256 hashes. All data is transmitted over HTTPS. We take reasonable technical precautions to protect your information, but no system is completely secure.</p>
+
+    <h2>7. Children's Privacy</h2>
+    <p>Bitcoin Pets is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe we have inadvertently collected such information, please contact us so we can delete it.</p>
+
+    <h2>8. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will post the revised policy on this page with an updated date. Continued use of the site after changes constitutes acceptance of the updated policy.</p>
+
+    <h2>9. Contact</h2>
+    <p>If you have questions about this Privacy Policy or wish to exercise your data rights, please reach out via the contact information on our <a href="/about" style="color:var(--orange)">About</a> page.</p>
+  </div>
+</main>
+
+<footer>
+  <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+    &nbsp;&bull;&nbsp;<a href="/privacy">Privacy Policy</a>
+    &nbsp;&bull;&nbsp;<a href="/terms">Terms of Service</a>
+  </p>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+  fetch('/api/me').then(r => r.json()).then(d => {
+    if (d.user) {
+      document.getElementById('navAuthItem').innerHTML = '<a href="/account">My Account</a>';
+      const su = document.getElementById('navSignUpItem');
+      if (su) su.remove();
+    }
+  }).catch(() => {});
+</script>
+</body>
+</html>

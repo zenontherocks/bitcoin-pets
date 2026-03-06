@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About &mdash; Bitcoin Pets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f7931a; --orange-dark: #d97b0e; --dark: #1a1a1a; --gray: #555;
+      --border: #ddd; --light-gray: #f5f5f5; --white: #fff; --radius: 8px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--dark); background: var(--light-gray); display: flex; flex-direction: column; min-height: 100vh; }
+
+    nav { background: var(--dark); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-size: 1.3rem; font-weight: 700; color: var(--orange); text-decoration: none; }
+    .nav-logo span { color: #fff; }
+    .nav-links { list-style: none; display: flex; gap: 0.25rem; align-items: center; }
+    .nav-links a { color: #ccc; text-decoration: none; font-size: 0.9rem; padding: 0.4rem 0.75rem; border-radius: var(--radius); transition: color 0.15s, background 0.15s; }
+    .nav-links a:hover { color: #fff; background: #2e2e2e; }
+    .nav-links .btn-primary { background: var(--orange); color: #fff; font-weight: 600; }
+    .nav-links .btn-primary:hover { background: var(--orange-dark); }
+
+    main { flex: 1; max-width: 760px; width: 100%; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; }
+
+    .hero { margin-bottom: 3.5rem; }
+    .hero h1 { font-size: 2.4rem; font-weight: 900; margin-bottom: 1rem; }
+    .hero p { font-size: 1.1rem; color: var(--gray); line-height: 1.75; }
+
+    .section { margin-bottom: 3rem; }
+    .section h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--orange); display: inline-block; }
+    .section p { font-size: 0.97rem; color: var(--gray); line-height: 1.8; }
+    .section p + p { margin-top: 0.85rem; }
+
+    .values { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; margin-top: 1.25rem; }
+    .value-card { background: var(--white); border-radius: var(--radius); padding: 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
+    .value-icon { font-size: 1.8rem; margin-bottom: 0.75rem; }
+    .value-card h3 { font-size: 0.95rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .value-card p { font-size: 0.85rem; color: var(--gray); line-height: 1.6; }
+
+    .cta { margin-top: 3.5rem; padding: 2.5rem 2rem; background: var(--white); border-radius: var(--radius); box-shadow: 0 1px 8px rgba(0,0,0,0.07); text-align: center; }
+    .cta h2 { font-size: 1.5rem; font-weight: 900; margin-bottom: 0.75rem; }
+    .cta p { color: var(--gray); margin-bottom: 1.5rem; }
+    .btn-row { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    .btn { display: inline-block; padding: 0.7rem 1.75rem; border-radius: var(--radius); font-size: 0.95rem; font-weight: 700; text-decoration: none; }
+    .btn-orange { background: var(--orange); color: #fff; }
+    .btn-orange:hover { background: var(--orange-dark); }
+    .btn-outline { border: 2px solid var(--dark); color: var(--dark); }
+    .btn-outline:hover { background: var(--dark); color: #fff; }
+
+    footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>
+  <ul class="nav-links">
+    <li><a href="/browse">Browse Pets</a></li>
+    <li><a href="/sell" class="btn-primary">+ Sell a Pet</a></li>
+    <li id="navAuthItem"><a href="/login">Sign In</a></li>
+    <li id="navSignUpItem"><a href="/register">Sign Up</a></li>
+  </ul>
+</nav>
+
+<main>
+  <div class="hero">
+    <h1>About Bitcoin Pets</h1>
+    <p>Bitcoin Pets is a peer-to-peer marketplace for buying and rehoming domestic animals using Bitcoin. We believe that pet adoption should be simple, transparent, and free from unnecessary intermediaries.</p>
+  </div>
+
+  <div class="section">
+    <h2>Our Mission</h2>
+    <p>The existing pet marketplace landscape is cluttered with platforms that take large commissions, require fiat payment processors, and hold funds in escrow for days. We set out to build something different: a lightweight marketplace where buyers and sellers transact directly, and where Bitcoin &mdash; a borderless, permissionless currency &mdash; is the native payment method.</p>
+    <p>Every listing on Bitcoin Pets is created by a real person with a real pet. Payments go straight from buyer to seller the moment a transaction is broadcast. No middlemen, no chargebacks, no platform fees.</p>
+  </div>
+
+  <div class="section">
+    <h2>What We Stand For</h2>
+    <div class="values">
+      <div class="value-card">
+        <div class="value-icon">&#128274;</div>
+        <h3>Privacy First</h3>
+        <p>We collect only what's necessary to run the marketplace. We don't sell your data or serve ads.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">&#9889;</div>
+        <h3>Peer-to-Peer</h3>
+        <p>Buyer and seller deal directly. No funds held by a platform, no approval gates.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">&#128176;</div>
+        <h3>Zero Commission</h3>
+        <p>Listing and buying are free. The only fees are standard Bitcoin network fees paid to miners.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">&#128062;</div>
+        <h3>Animal Welfare</h3>
+        <p>We prohibit listings for illegal or endangered species. Responsible rehoming is a priority.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Why Bitcoin?</h2>
+    <p>Bitcoin is the most widely understood and trusted cryptocurrency. It settles across borders without requiring either party to have a bank account, a credit card, or permission from a financial institution. For a peer-to-peer marketplace, it is a natural fit.</p>
+    <p>We display prices in BTC. Sellers set their own asking price, and buyers send payment directly to the seller's wallet address. That's it.</p>
+  </div>
+
+  <div class="section">
+    <h2>Who Runs This?</h2>
+    <p>Bitcoin Pets is an independent project built and maintained by a small team of Bitcoin enthusiasts and animal lovers. We are not affiliated with any pet industry lobby, financial institution, or cryptocurrency exchange.</p>
+  </div>
+
+  <div class="cta">
+    <h2>Join the marketplace</h2>
+    <p>Create an account and start browsing or listing pets today.</p>
+    <div class="btn-row">
+      <a href="/register" class="btn btn-orange">Create an Account</a>
+      <a href="/how-it-works" class="btn btn-outline">How It Works</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>&copy; <span id="year"></span> Bitcoin Pets. All rights reserved.
+    &nbsp;&bull;&nbsp;<a href="/privacy">Privacy Policy</a>
+    &nbsp;&bull;&nbsp;<a href="/terms">Terms of Service</a>
+  </p>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+  fetch('/api/me').then(r => r.json()).then(d => {
+    if (d.user) {
+      document.getElementById('navAuthItem').innerHTML = '<a href="/account">My Account</a>';
+      const su = document.getElementById('navSignUpItem');
+      if (su) su.remove();
+    }
+  }).catch(() => {});
+</script>
+</body>
+</html>
