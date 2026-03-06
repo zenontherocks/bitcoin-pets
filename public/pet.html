@@ -163,6 +163,7 @@
     .btn-buy:hover { background: var(--orange-dark); }
     .btn-buy:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    .pending-expiry { font-size: 0.8rem; color: #d97b0e; margin-top: 0.4rem; font-weight: 600; }
     .seller-line {
       font-size: 0.875rem;
       color: var(--gray);
@@ -482,9 +483,15 @@
         `<div class="spec-row"><span class="spec-label">${escHtml(label)}</span><span class="spec-value">${escHtml(value)}</span></div>`
       ).join('');
 
-      // Available status badge
-      const statusColor = pet.status === 'available' ? '#38a169' : '#aaa';
-      const statusLabel = pet.status === 'available' ? '&#10003; Available' : 'Not available';
+      // Status badge
+      let statusColor, statusLabel;
+      if (pet.status === 'available') {
+        statusColor = '#38a169'; statusLabel = '&#10003; Available';
+      } else if (pet.status === 'pending') {
+        statusColor = '#d97b0e'; statusLabel = '&#8987; Payment Pending';
+      } else {
+        statusColor = '#aaa'; statusLabel = 'Sold';
+      }
 
       main.innerHTML = `
         <a href="/browse" class="back-link">&#8592; Back to Browse</a>
@@ -503,13 +510,18 @@
               &nbsp;
               <span class="pet-species-badge" style="background:${statusColor}22; color:${statusColor}">${statusLabel}</span>
             </div>
+            ${data.order_expires_at && pet.status === 'pending' ? `<div class="pending-expiry" id="pendingExpiry"></div>` : ''}
 
             <div class="price-box">
               <div class="price-label">Asking Price</div>
               <div class="price-value">${formatBtc(pet.price_btc)}</div>
             </div>
 
-            ${pet.status === 'available' ? `<button class="btn-buy" id="buyBtn">Buy with Bitcoin</button>` : `<button class="btn-buy" disabled>No longer available</button>`}
+            ${pet.status === 'available'
+              ? `<button class="btn-buy" id="buyBtn">Buy with Bitcoin</button>`
+              : pet.status === 'pending'
+                ? `<button class="btn-buy" disabled>Purchase in Progress</button>`
+                : `<button class="btn-buy" disabled>Sold</button>`}
 
             <div class="seller-line">Listed by <strong>${escHtml(pet.seller)}</strong></div>
 
@@ -526,6 +538,24 @@
           document.getElementById('mainImg').src = thumb.src;
         });
       });
+
+      // Pending expiry countdown on listing page
+      if (data.order_expires_at && pet.status === 'pending') {
+        const expiryEl = document.getElementById('pendingExpiry');
+        function tickExpiry() {
+          const secs = Math.max(0, Math.floor((new Date(data.order_expires_at) - Date.now()) / 1000));
+          if (secs === 0) {
+            expiryEl.textContent = 'Pending order has expired — refreshing…';
+            setTimeout(() => location.reload(), 2000);
+            return;
+          }
+          const m = String(Math.floor(secs / 60)).padStart(2, '0');
+          const s = String(secs % 60).padStart(2, '0');
+          expiryEl.textContent = `A buyer has ${m}:${s} left to complete payment.`;
+        }
+        tickExpiry();
+        setInterval(tickExpiry, 1000);
+      }
 
       // Buy button — create invoice
       const buyBtn = document.getElementById('buyBtn');
