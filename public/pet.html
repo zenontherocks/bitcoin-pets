@@ -280,6 +280,24 @@
     }
     .copy-btn:hover { background: #333; }
 
+    .wallet-link {
+      display: block;
+      width: 100%;
+      padding: 0.6rem;
+      background: transparent;
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
+      color: var(--primary);
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+      margin-bottom: 0.75rem;
+      transition: background 0.15s, color 0.15s;
+    }
+    .wallet-link:hover { background: var(--primary); color: #fff; }
+
     .invoice-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; }
     .countdown { font-size: 0.8rem; color: var(--gray); }
     .countdown.urgent { color: #e53e3e; font-weight: 700; }
@@ -332,6 +350,7 @@
           <div class="invoice-addr" id="invoiceAddr"></div>
         </div>
         <button class="copy-btn" id="copyBtn">Copy Address</button>
+        <a class="wallet-link" id="walletLink" href="#" target="_blank" rel="noopener">Open in Wallet ↗</a>
         <div class="invoice-footer">
           <span class="countdown" id="countdown"></span>
           <span class="poll-status" id="pollStatus">Checking for payment&hellip;</span>
@@ -674,6 +693,7 @@
       const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(bip21)}&size=200x200&margin=10`;
       document.getElementById('invoiceQR').src = qrSrc;
       document.getElementById('invoiceAddr').textContent = order.pay_address;
+      document.getElementById('walletLink').href = bip21;
       document.getElementById('pollStatus').textContent = 'Checking for payment\u2026';
       // Update amount display to show exact sats amount from invoice
       const sats = Math.round(order.amount_btc * 1e8).toLocaleString('en-US');
