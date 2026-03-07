@@ -94,6 +94,7 @@
     .badge-available { background: #d4f5e2; color: #276749; }
     .badge-pending   { background: #fef3e2; color: #92400e; }
     .badge-sold      { background: #f0f0f0; color: #888; }
+    .badge-ended     { background: #f0f0f0; color: #888; }
     .pet-expiry { font-size: 0.7rem; color: #d97b0e; margin-top: 0.15rem; }
     .pet-list-empty { font-size: 0.9rem; color: var(--gray); }
     .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
@@ -340,8 +341,8 @@
     }
 
     const speciesEmoji = { dog:'🐶', cat:'🐱', bird:'🐦', fish:'🐠', reptile:'🦎', 'small animal':'🐹', other:'🐾' };
-    const badgeClass = { available:'badge-available', pending:'badge-pending', sold:'badge-sold' };
-    const badgeLabel = { available:'Available', pending:'Pending', sold:'Sold' };
+    const badgeClass = { available:'badge-available', pending:'badge-pending', sold:'badge-sold', ended:'badge-ended' };
+    const badgeLabel = { available:'Available', pending:'Pending', sold:'Sold', ended:'Ended' };
 
     el.innerHTML = '<div class="pet-list">' + pets.map(p => {
       const emoji = speciesEmoji[(p.species || '').toLowerCase()] || '🐾';
@@ -389,7 +390,7 @@
   async function endListing(e, petId) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm('End this listing? It will be removed and buyers will no longer see it.')) return false;
+    if (!confirm('End this listing? It will be marked as ended and removed from the browse page.')) return false;
     try {
       const res = await fetch(`/api/pets/${petId}`, { method: 'DELETE' });
       const data = await res.json();

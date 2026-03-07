@@ -42,7 +42,7 @@ CREATE TABLE pets (
     CHECK(price_currency IN ('btc', 'usd')),     -- which currency the price is anchored to
   bitcoin_address TEXT,                          -- per-listing receive address (overrides user default)                                -- asking price in BTC
   status TEXT NOT NULL DEFAULT 'available'
-    CHECK(status IN ('available', 'pending', 'sold')),
+    CHECK(status IN ('available', 'pending', 'sold', 'ended')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
