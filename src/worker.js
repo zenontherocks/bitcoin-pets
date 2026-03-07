@@ -92,6 +92,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/account/password' && request.method === 'PUT') {
     return handleChangePassword(request, env);
   }
+  if (url.pathname === '/api/btc-price' && request.method === 'GET') {
+    return handleBtcPrice();
+  }
   if (url.pathname === '/api/pets' && request.method === 'GET') {
     return handleListPets(request, env, url);
   }
@@ -131,6 +134,17 @@ async function getSession(request, env) {
   return session || null;
 }
 
+async function handleBtcPrice() {
+  try {
+    const res = await fetch('https://mempool.space/api/v1/prices');
+    if (!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    return json({ usd: data.USD });
+  } catch {
+    return json({ error: 'Could not fetch BTC price' }, 502);
+  }
+}
+
 async function handleListPets(request, env, url) {
   const species = url.searchParams.get('species') || '';
   const page    = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
@@ -143,7 +157,7 @@ async function handleListPets(request, env, url) {
     : [limit + 1, offset];
 
   const rows = await env.DB.prepare(`
-    SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_btc, p.created_at,
+    SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_btc, p.price_usd, p.price_currency, p.created_at,
            pp.url AS photo_url, u.username AS seller
     FROM pets p
     LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
@@ -301,13 +315,15 @@ async function handleCreatePet(request, env) {
 
   const { name, species, breed, date_of_birth, weight_lbs, gender, color,
           description, health_info, vaccinations, registry_name,
-          registry_number, microchip_id, price_btc, bitcoin_address, photo_keys } = body;
+          registry_number, microchip_id, price_btc, price_usd, price_currency,
+          bitcoin_address, photo_keys } = body;
 
   if (!name || !name.trim()) return json({ error: 'Pet name is required' }, 400);
   if (!species || !species.trim()) return json({ error: 'Species is required' }, 400);
   if (price_btc == null || isNaN(Number(price_btc)) || Number(price_btc) < 0) {
     return json({ error: 'A valid price in BTC is required' }, 400);
   }
+  const anchorCurrency = price_currency === 'usd' ? 'usd' : 'btc';
 
   // Look up user_id from username stored in session
   const userRow = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(session.username).first();
@@ -317,8 +333,8 @@ async function handleCreatePet(request, env) {
   await env.DB.prepare(`
     INSERT INTO pets (id, user_id, name, species, breed, date_of_birth, weight_lbs,
       gender, color, description, health_info, vaccinations,
-      registry_name, registry_number, microchip_id, price_btc, bitcoin_address)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      registry_name, registry_number, microchip_id, price_btc, price_usd, price_currency, bitcoin_address)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, userRow.id,
     name.trim(), species.trim(),
@@ -328,7 +344,10 @@ async function handleCreatePet(request, env) {
     description || null, health_info || null,
     vaccinations || null, registry_name || null,
     registry_number || null, microchip_id || null,
-    Number(price_btc), bitcoin_address || null
+    Number(price_btc),
+    (price_usd != null && !isNaN(Number(price_usd))) ? Number(price_usd) : null,
+    anchorCurrency,
+    bitcoin_address || null
   ).run();
 
   if (Array.isArray(photo_keys) && photo_keys.length > 0) {
@@ -366,7 +385,7 @@ async function handleEndListing(request, env, petId) {
 async function handleCreateOrder(request, env, petId) {
   // Fetch pet with seller's bitcoin address (listing-level or account-level)
   const pet = await env.DB.prepare(`
-    SELECT p.id, p.name, p.status, p.price_btc,
+    SELECT p.id, p.name, p.status, p.price_btc, p.price_usd, p.price_currency,
       COALESCE(p.bitcoin_address, u.bitcoin_address) AS pay_address
     FROM pets p JOIN users u ON u.id = p.user_id
     WHERE p.id = ?
@@ -379,18 +398,33 @@ async function handleCreateOrder(request, env, petId) {
     return json({ error: 'Seller has not set a Bitcoin address for this listing. Contact them directly.' }, 422);
   }
 
+  // For USD-anchored listings, compute the BTC amount at current market price
+  let amountBtc = pet.price_btc;
+  if (pet.price_currency === 'usd' && pet.price_usd) {
+    try {
+      const priceRes = await fetch('https://mempool.space/api/v1/prices');
+      if (priceRes.ok) {
+        const priceData = await priceRes.json();
+        const btcUsd = priceData.USD;
+        if (btcUsd && btcUsd > 0) {
+          amountBtc = Math.round((pet.price_usd / btcUsd) * 1e8) / 1e8;
+        }
+      }
+    } catch { /* fall back to stored price_btc */ }
+  }
+
   const id = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes
 
   await env.DB.prepare(
     "INSERT INTO orders (id, pet_id, pay_address, amount_btc, expires_at) VALUES (?, ?, ?, ?, ?)"
-  ).bind(id, petId, payAddress, pet.price_btc, expiresAt).run();
+  ).bind(id, petId, payAddress, amountBtc, expiresAt).run();
 
   await env.DB.prepare(
     "UPDATE pets SET status='pending', updated_at=datetime('now') WHERE id=?"
   ).bind(petId).run();
 
-  return json({ order: { id, pay_address: payAddress, amount_btc: pet.price_btc, expires_at: expiresAt, pet_name: pet.name } }, 201);
+  return json({ order: { id, pay_address: payAddress, amount_btc: amountBtc, expires_at: expiresAt, pet_name: pet.name } }, 201);
 }
 
 async function handleGetOrder(request, env, orderId) {

@@ -128,6 +128,7 @@
     }
     .price-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); }
     .price-value { font-size: 2rem; font-weight: 800; color: var(--orange); margin-top: 0.1rem; }
+    .price-secondary { font-size: 0.9rem; color: var(--gray); margin-top: 0.2rem; font-weight: 500; }
 
     .btn-buy {
       width: 100%;
@@ -372,10 +373,39 @@
       );
     }
 
+    let btcPriceUsd = null;
+
     function formatBtc(n) {
       const num = parseFloat(n);
       if (isNaN(num)) return '—';
       return num.toLocaleString('en-US', { maximumFractionDigits: 8 }) + ' BTC';
+    }
+
+    function formatUsd(n) {
+      return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatSats(btc) {
+      return Math.round(Number(btc) * 1e8).toLocaleString('en-US') + ' sats';
+    }
+
+    function primaryPriceStr(pet) {
+      if (pet.price_currency === 'usd' && pet.price_usd != null) {
+        return formatUsd(pet.price_usd);
+      }
+      return formatBtc(pet.price_btc);
+    }
+
+    function secondaryPriceStr(pet) {
+      if (!btcPriceUsd) return '';
+      if (pet.price_currency === 'usd' && pet.price_usd != null) {
+        const btcEq = pet.price_usd / btcPriceUsd;
+        return '\u2248 ' + formatBtc(btcEq) + ' \u00b7 ' + formatSats(btcEq);
+      }
+      if (pet.price_btc != null) {
+        return '\u2248 ' + formatUsd(pet.price_btc * btcPriceUsd) + ' \u00b7 ' + formatSats(pet.price_btc);
+      }
+      return '';
     }
 
     function formatDate(str) {
@@ -399,6 +429,15 @@
     const params = new URLSearchParams(location.search);
     const petId  = params.get('id');
 
+    // Fetch BTC price; update secondary price display once loaded
+    fetch('/api/btc-price').then(r => r.json()).then(d => {
+      btcPriceUsd = d.usd || null;
+      const secEl = document.getElementById('priceSecondary');
+      if (secEl && window._loadedPet && btcPriceUsd) {
+        secEl.textContent = secondaryPriceStr(window._loadedPet);
+      }
+    }).catch(() => {});
+
     async function load() {
       const main = document.getElementById('main');
       if (!petId) {
@@ -420,6 +459,7 @@
       }
 
       const { pet, photos } = data;
+      window._loadedPet = pet;
       document.title = escHtml(pet.name) + ' \u2014 Bitcoin-Pets.com';
 
       const primaryPhoto = photos.find(p => p.is_primary) || photos[0];
@@ -487,7 +527,8 @@
 
             <div class="price-box">
               <div class="price-label">Asking Price</div>
-              <div class="price-value">${formatBtc(pet.price_btc)}</div>
+              <div class="price-value" id="priceValue">${escHtml(primaryPriceStr(pet))}</div>
+              <div class="price-secondary" id="priceSecondary">${escHtml(secondaryPriceStr(pet))}</div>
             </div>
 
             ${pet.status === 'available'
@@ -606,7 +647,11 @@
       clearInterval(countdownInterval);
       clearInterval(pollInterval);
       showView('invoiceView');
-      document.getElementById('invoiceAmount').innerHTML = `${formatBtc(pet.price_btc)} <span>BTC</span>`;
+      // Show the primary price label (BTC or USD), always paid in sats
+      const priceDisplay = pet.price_currency === 'usd' && pet.price_usd != null
+        ? `${formatUsd(pet.price_usd)} <span>USD &mdash; paid in sats at current rate</span>`
+        : `${formatBtc(pet.price_btc)} <span>BTC</span>`;
+      document.getElementById('invoiceAmount').innerHTML = priceDisplay;
       document.getElementById('invoiceAddr').textContent = '';
       document.getElementById('invoiceQR').src = '';
       document.getElementById('countdown').textContent = '';
@@ -633,7 +678,11 @@
       const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(bip21)}&size=200x200&margin=10`;
       document.getElementById('invoiceQR').src = qrSrc;
       document.getElementById('invoiceAddr').textContent = order.pay_address;
-      document.getElementById('pollStatus').textContent = 'Checking for payment…';
+      document.getElementById('pollStatus').textContent = 'Checking for payment\u2026';
+      // Update amount display to show exact sats amount from invoice
+      const sats = Math.round(order.amount_btc * 1e8).toLocaleString('en-US');
+      document.getElementById('invoiceAmount').innerHTML =
+        `${formatBtc(order.amount_btc)} <span>${sats} sats</span>`;
 
       startCountdown(order.expires_at);
       startPolling(order.id);

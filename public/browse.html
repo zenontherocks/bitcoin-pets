@@ -91,6 +91,7 @@
     .pet-name { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pet-meta { font-size: 0.82rem; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pet-price { margin-top: auto; padding-top: 0.6rem; font-size: 0.95rem; font-weight: 700; color: var(--orange); }
+    .pet-price-sub { font-size: 0.75rem; color: #888; font-weight: 500; margin-top: 0.1rem; }
     .pet-seller { font-size: 0.78rem; color: #aaa; margin-top: 0.1rem; }
 
     .state-box { text-align: center; padding: 4rem 1rem; color: var(--gray); }
@@ -174,6 +175,18 @@
     let currentPage    = 1;
     let totalShown     = 0;
     let loading        = false;
+    let btcPriceUsd    = null;
+
+    fetch('/api/btc-price').then(r => r.json()).then(d => {
+      btcPriceUsd = d.usd || null;
+      // Update any already-rendered cards
+      document.querySelectorAll('[data-price-sub]').forEach(el => {
+        const btc = parseFloat(el.dataset.priceBtc);
+        const usd = parseFloat(el.dataset.priceUsd);
+        const cur = el.dataset.priceCurrency;
+        el.textContent = buildSubPrice(btc, usd, cur);
+      });
+    }).catch(() => {});
 
     const SPECIES_ICON = {
       dog: '&#128054;', cat: '&#128049;', bird: '&#128038;', reptile: '&#129422;',
@@ -188,6 +201,37 @@
       const num = parseFloat(n);
       if (isNaN(num)) return '&mdash;';
       return num.toLocaleString('en-US', { maximumFractionDigits: 8 }) + ' BTC';
+    }
+
+    function formatUsd(n) {
+      return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatSats(btc) {
+      return Math.round(Number(btc) * 1e8).toLocaleString('en-US') + ' sats';
+    }
+
+    function primaryPrice(pet) {
+      if (pet.price_currency === 'usd' && pet.price_usd != null) {
+        return formatUsd(pet.price_usd);
+      }
+      return formatBtc(pet.price_btc);
+    }
+
+    function buildSubPrice(btc, usd, currency) {
+      if (currency === 'usd' && usd != null && !isNaN(usd)) {
+        // Primary is USD — show sats equivalent
+        if (btcPriceUsd && btcPriceUsd > 0) {
+          const btcEq = usd / btcPriceUsd;
+          return '\u2248 ' + formatSats(btcEq);
+        }
+        return '';
+      }
+      // Primary is BTC — show USD equivalent
+      if (btcPriceUsd && btcPriceUsd > 0 && !isNaN(btc)) {
+        return '\u2248 ' + formatUsd(btc * btcPriceUsd);
+      }
+      return '';
     }
 
     function escHtml(str) {
@@ -224,12 +268,20 @@
 
       const meta = [speciesLabel(pet.species), pet.breed].filter(Boolean).join(' \u00b7 ');
 
+      const subPrice = buildSubPrice(pet.price_btc, pet.price_usd, pet.price_currency);
+
       const info = document.createElement('div');
       info.className = 'pet-info';
       info.innerHTML = `
         <div class="pet-name">${escHtml(pet.name)}</div>
         <div class="pet-meta">${escHtml(meta)}</div>
-        <div class="pet-price">${formatBtc(pet.price_btc)}</div>
+        <div class="pet-price">${escHtml(primaryPrice(pet))}</div>
+        <div class="pet-price-sub"
+          data-price-sub
+          data-price-btc="${escHtml(String(pet.price_btc))}"
+          data-price-usd="${escHtml(String(pet.price_usd ?? ''))}"
+          data-price-currency="${escHtml(pet.price_currency || 'btc')}"
+        >${subPrice}</div>
         <div class="pet-seller">Listed by ${escHtml(pet.seller)}</div>
       `;
       card.appendChild(info);

@@ -123,6 +123,25 @@
       pointer-events: none;
     }
 
+    .currency-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1.1rem;
+      border: 2px solid var(--orange);
+      border-radius: 999px;
+      background: var(--white);
+      color: var(--orange);
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .currency-toggle:hover { background: #fffaf3; }
+    .currency-toggle.locked { background: var(--orange); color: #fff; }
+    .currency-toggle .toggle-icon { font-size: 1rem; line-height: 1; }
+    .price-equiv { font-size: 0.8rem; color: #888; margin-top: 0.25rem; }
+
     /* ── Alert ── */
     .alert {
       padding: 0.75rem 1rem;
@@ -420,11 +439,26 @@
           <div class="section-title">Pricing</div>
           <div class="form-grid">
             <div class="form-group">
-              <label for="price_btc">Asking price *</label>
+              <label for="price_usd">Price in USD</label>
               <div class="price-wrap">
-                <input type="number" id="price_btc" name="price_btc" placeholder="0.0025" min="0" step="0.00000001" required />
+                <input type="number" id="price_usd" placeholder="e.g. 500.00" min="0" step="0.01" />
+                <span class="price-suffix" style="color:#2d8a4e">USD</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="price_btc">Price in Bitcoin</label>
+              <div class="price-wrap">
+                <input type="number" id="price_btc" name="price_btc" placeholder="e.g. 0.005" min="0" step="0.00000001" />
                 <span class="price-suffix">BTC</span>
               </div>
+            </div>
+            <div class="form-group full" style="display:flex; flex-direction:column; gap:0.4rem; align-items:flex-start;">
+              <button type="button" id="currencyToggle" class="currency-toggle">
+                <span class="toggle-icon">&#8734;</span>
+                <span id="toggleLabel">Keep the price at 0 Bitcoin</span>
+              </button>
+              <div class="price-equiv" id="priceEquiv">Enter a price above to see the conversion</div>
+              <div class="form-hint">Customers always pay in sats. If you lock to USD, the sats amount adjusts with the market at checkout time. If you lock to Bitcoin, the USD display updates dynamically.</div>
             </div>
           </div>
         </div>
@@ -467,6 +501,108 @@
     const photoInput = document.getElementById('photoInput');
     const dropZone   = document.getElementById('dropZone');
     const photoGrid  = document.getElementById('photoGrid');
+
+    // ── Pricing / BTC-USD conversion ──────────────────────────────────────────
+    let btcPriceUsd   = null;   // current BTC/USD market price
+    let priceCurrency = 'btc';  // 'btc' or 'usd' — which value is the anchor
+    let updatingFrom  = null;   // prevent feedback loops during autofill
+
+    const usdInput     = document.getElementById('price_usd');
+    const btcInput     = document.getElementById('price_btc');
+    const toggleBtn    = document.getElementById('currencyToggle');
+    const toggleLabel  = document.getElementById('toggleLabel');
+    const priceEquivEl = document.getElementById('priceEquiv');
+
+    async function fetchBtcPrice() {
+      try {
+        const res = await fetch('/api/btc-price');
+        if (res.ok) {
+          const data = await res.json();
+          btcPriceUsd = data.usd;
+        }
+      } catch { /* silent */ }
+    }
+
+    function formatUsd(n) {
+      return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function formatBtcShort(n) {
+      return Number(n).toLocaleString('en-US', { maximumFractionDigits: 8 }) + ' BTC';
+    }
+    function formatSats(n) {
+      return Math.round(Number(n) * 1e8).toLocaleString('en-US') + ' sats';
+    }
+
+    function updateToggleLabel() {
+      if (priceCurrency === 'btc') {
+        const btcVal = parseFloat(btcInput.value);
+        const label  = (!isNaN(btcVal) && btcVal > 0) ? formatBtcShort(btcVal) : '0 Bitcoin';
+        toggleLabel.textContent = 'Keep the price at ' + label;
+        toggleBtn.classList.remove('locked');
+      } else {
+        const usdVal = parseFloat(usdInput.value);
+        const label  = (!isNaN(usdVal) && usdVal > 0) ? formatUsd(usdVal) + ' Dollars' : '0 Dollars';
+        toggleLabel.textContent = 'Keep the price at ' + label;
+        toggleBtn.classList.add('locked');
+      }
+    }
+
+    function updateEquivLine() {
+      if (!btcPriceUsd) { priceEquivEl.textContent = 'Loading market price\u2026'; return; }
+      const btcVal = parseFloat(btcInput.value);
+      const usdVal = parseFloat(usdInput.value);
+      if (!isNaN(btcVal) && btcVal > 0 && priceCurrency === 'btc') {
+        priceEquivEl.textContent = '\u2248 ' + formatUsd(btcVal * btcPriceUsd) + ' USD \u00b7 ' + formatSats(btcVal);
+      } else if (!isNaN(usdVal) && usdVal > 0 && priceCurrency === 'usd') {
+        const btcEq = usdVal / btcPriceUsd;
+        priceEquivEl.textContent = '\u2248 ' + formatBtcShort(btcEq) + ' \u00b7 ' + formatSats(btcEq);
+      } else {
+        priceEquivEl.textContent = 'Enter a price above to see the conversion';
+      }
+    }
+
+    usdInput.addEventListener('input', () => {
+      if (updatingFrom === 'btc') return;
+      updatingFrom = 'usd';
+      if (btcPriceUsd) {
+        const usdVal = parseFloat(usdInput.value);
+        if (!isNaN(usdVal) && usdVal >= 0) {
+          btcInput.value = (usdVal / btcPriceUsd).toFixed(8);
+        } else {
+          btcInput.value = '';
+        }
+      }
+      updateEquivLine();
+      updateToggleLabel();
+      updatingFrom = null;
+    });
+
+    btcInput.addEventListener('input', () => {
+      if (updatingFrom === 'usd') return;
+      updatingFrom = 'btc';
+      if (btcPriceUsd) {
+        const btcVal = parseFloat(btcInput.value);
+        if (!isNaN(btcVal) && btcVal >= 0) {
+          usdInput.value = (btcVal * btcPriceUsd).toFixed(2);
+        } else {
+          usdInput.value = '';
+        }
+      }
+      updateEquivLine();
+      updateToggleLabel();
+      updatingFrom = null;
+    });
+
+    toggleBtn.addEventListener('click', () => {
+      priceCurrency = priceCurrency === 'btc' ? 'usd' : 'btc';
+      updateToggleLabel();
+      updateEquivLine();
+    });
+
+    fetchBtcPrice().then(() => {
+      updateToggleLabel();
+      updateEquivLine();
+    });
 
     const MAX_PHOTOS = 5;
     const MAX_SIZE   = 5 * 1024 * 1024;
@@ -589,12 +725,13 @@
 
       const name      = form.name.value.trim();
       const species   = form.species.value;
-      const price_btc = form.price_btc.value.trim();
+      const price_btc = btcInput.value.trim();
+      const price_usd = usdInput.value.trim();
 
-      if (!name)      { showAlert('Pet name is required.', 'error'); return; }
-      if (!species)   { showAlert('Please select a species.', 'error'); return; }
+      if (!name)    { showAlert('Pet name is required.', 'error'); return; }
+      if (!species) { showAlert('Please select a species.', 'error'); return; }
       if (!price_btc || isNaN(Number(price_btc)) || Number(price_btc) < 0) {
-        showAlert('Please enter a valid price in BTC.', 'error');
+        showAlert('Please enter a valid price.', 'error');
         return;
       }
 
@@ -613,6 +750,8 @@
         registry_number: form.registry_number.value.trim() || null,
         microchip_id:    form.microchip_id.value.trim() || null,
         price_btc:       Number(price_btc),
+        price_usd:       (price_usd && !isNaN(Number(price_usd))) ? Number(price_usd) : null,
+        price_currency:  priceCurrency,
         bitcoin_address: form.bitcoin_address.value.trim() || null,
         photo_keys:      uploadedPhotos.filter(p => p.key).map(p => p.key)
       };
