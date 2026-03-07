@@ -37,6 +37,9 @@ CREATE TABLE pets (
   registry_number TEXT,
   microchip_id TEXT,
   price_btc REAL,
+  price_usd REAL,                                -- asking price in USD (if seller chose USD anchor)
+  price_currency TEXT NOT NULL DEFAULT 'btc'
+    CHECK(price_currency IN ('btc', 'usd')),     -- which currency the price is anchored to
   bitcoin_address TEXT,                          -- per-listing receive address (overrides user default)                                -- asking price in BTC
   status TEXT NOT NULL DEFAULT 'available'
     CHECK(status IN ('available', 'pending', 'sold')),
