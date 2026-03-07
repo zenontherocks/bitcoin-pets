@@ -108,6 +108,10 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/pets' && request.method === 'POST') {
     return handleCreatePet(request, env);
   }
+  const petImagesMatch = url.pathname.match(/^\/api\/pets\/([a-zA-Z0-9-]+)\/images$/);
+  if (petImagesMatch && request.method === 'POST') {
+    return handleAddPetImages(request, env, petImagesMatch[1]);
+  }
   const petOrderMatch = url.pathname.match(/^\/api\/pets\/([a-zA-Z0-9-]+)\/order$/);
   if (petOrderMatch && request.method === 'POST') {
     return handleCreateOrder(request, env, petOrderMatch[1]);
@@ -379,6 +383,38 @@ async function handleEndListing(request, env, petId) {
   await env.DB.prepare(
     "UPDATE pets SET status='ended', updated_at=datetime('now') WHERE id=?"
   ).bind(petId).run();
+
+  return json({ success: true });
+}
+
+async function handleAddPetImages(request, env, petId) {
+  const session = await getSession(request, env);
+  if (!session) return json({ error: 'Unauthorized' }, 401);
+
+  const userRow = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(session.username).first();
+  if (!userRow) return json({ error: 'Not found' }, 404);
+
+  const pet = await env.DB.prepare('SELECT id, user_id FROM pets WHERE id = ?').bind(petId).first();
+  if (!pet) return json({ error: 'Listing not found' }, 404);
+  if (pet.user_id !== userRow.id) return json({ error: 'Forbidden' }, 403);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
+
+  const { photo_keys } = body;
+  if (!Array.isArray(photo_keys) || photo_keys.length === 0) {
+    return json({ error: 'No photos provided' }, 400);
+  }
+
+  await env.DB.prepare('DELETE FROM pet_pictures WHERE pet_id = ?').bind(petId).run();
+  const keys = photo_keys.slice(0, 5);
+  for (let i = 0; i < keys.length; i++) {
+    const key = String(keys[i]).replace(/[^a-zA-Z0-9.\-_]/g, '');
+    if (!key) continue;
+    await env.DB.prepare(
+      'INSERT INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
+    ).bind(crypto.randomUUID(), petId, `/api/images/${key}`, i === 0 ? 1 : 0).run();
+  }
 
   return json({ success: true });
 }
