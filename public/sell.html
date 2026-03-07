@@ -639,6 +639,7 @@
     usdInput.addEventListener('input', () => {
       if (updatingFrom === 'btc') return;
       updatingFrom = 'usd';
+      priceCurrency = 'usd';
       if (btcPriceUsd) {
         const usdVal = parseFloat(usdInput.value);
         if (!isNaN(usdVal) && usdVal >= 0) {
@@ -647,14 +648,15 @@
           btcInput.value = '';
         }
       }
-      updateEquivLine();
       updateAnchorState();
+      updateEquivLine();
       updatingFrom = null;
     });
 
     btcInput.addEventListener('input', () => {
       if (updatingFrom === 'usd') return;
       updatingFrom = 'btc';
+      priceCurrency = 'btc';
       if (btcPriceUsd) {
         const btcVal = parseFloat(btcInput.value);
         if (!isNaN(btcVal) && btcVal >= 0) {
@@ -663,8 +665,8 @@
           usdInput.value = '';
         }
       }
-      updateEquivLine();
       updateAnchorState();
+      updateEquivLine();
       updatingFrom = null;
     });
 
