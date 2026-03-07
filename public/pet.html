@@ -390,20 +390,16 @@
     }
 
     function primaryPriceStr(pet) {
-      if (pet.price_currency === 'usd' && pet.price_usd != null) {
-        return formatUsd(pet.price_usd);
-      }
-      return formatBtc(pet.price_btc);
+      return formatSats(pet.price_btc);
     }
 
     function secondaryPriceStr(pet) {
-      if (!btcPriceUsd) return '';
       if (pet.price_currency === 'usd' && pet.price_usd != null) {
-        const btcEq = pet.price_usd / btcPriceUsd;
-        return '\u2248 ' + formatBtc(btcEq) + ' \u00b7 ' + formatSats(btcEq);
+        return '\u2248 ' + formatUsd(pet.price_usd);
       }
+      if (!btcPriceUsd) return '';
       if (pet.price_btc != null) {
-        return '\u2248 ' + formatUsd(pet.price_btc * btcPriceUsd) + ' \u00b7 ' + formatSats(pet.price_btc);
+        return '\u2248 ' + formatUsd(pet.price_btc * btcPriceUsd);
       }
       return '';
     }

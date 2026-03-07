@@ -212,22 +212,14 @@
     }
 
     function primaryPrice(pet) {
-      if (pet.price_currency === 'usd' && pet.price_usd != null) {
-        return formatUsd(pet.price_usd);
-      }
-      return formatBtc(pet.price_btc);
+      return formatSats(pet.price_btc);
     }
 
     function buildSubPrice(btc, usd, currency) {
       if (currency === 'usd' && usd != null && !isNaN(usd)) {
-        // Primary is USD — show sats equivalent
-        if (btcPriceUsd && btcPriceUsd > 0) {
-          const btcEq = usd / btcPriceUsd;
-          return '\u2248 ' + formatSats(btcEq);
-        }
-        return '';
+        return '\u2248 ' + formatUsd(usd);
       }
-      // Primary is BTC — show USD equivalent
+      // BTC-anchored — show USD equivalent
       if (btcPriceUsd && btcPriceUsd > 0 && !isNaN(btc)) {
         return '\u2248 ' + formatUsd(btc * btcPriceUsd);
       }
