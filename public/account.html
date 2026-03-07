@@ -91,6 +91,14 @@
       cursor: pointer; white-space: nowrap; line-height: 1.4;
     }
     .btn-end-listing:hover { background: #fee2e2; }
+    .btn-add-photos {
+      font-size: 0.68rem; font-weight: 700; color: var(--orange-dark);
+      background: #fff8ee; border: 1px solid #fcd38a;
+      border-radius: 999px; padding: 0.2rem 0.55rem;
+      cursor: pointer; white-space: nowrap; line-height: 1.4;
+    }
+    .btn-add-photos:hover { background: #fef0d4; }
+    .btn-add-photos:disabled { opacity: 0.6; cursor: not-allowed; }
     .badge-available { background: #d4f5e2; color: #276749; }
     .badge-pending   { background: #fef3e2; color: #92400e; }
     .badge-sold      { background: #f0f0f0; color: #888; }
@@ -213,6 +221,8 @@
     </div>
     <div id="petList"><p class="pet-list-empty">Loading&hellip;</p></div>
   </div>
+
+  <input type="file" id="photoFileInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" />
 
   <!-- Sign out -->
   <div class="card">
@@ -358,6 +368,9 @@
       const endBtn = p.status === 'available'
         ? `<button class="btn-end-listing" onclick="return endListing(event,'${p.id}')">End Listing</button>`
         : '';
+      const addPhotosBtn = p.status === 'available'
+        ? `<button class="btn-add-photos" id="addphotos-${p.id}" onclick="return pickPhotos(event,'${p.id}')">Add Photos</button>`
+        : '';
       return `<a class="pet-row" href="/pet?id=${p.id}">
         ${thumb}
         <div class="pet-info">
@@ -365,7 +378,7 @@
           <div class="pet-meta">${meta ? meta + (priceStr ? ' · ' : '') : ''}${priceStr}</div>
           ${expiryHtml}
         </div>
-        <div class="pet-right">${badge}${endBtn}</div>
+        <div class="pet-right">${badge}${addPhotosBtn}${endBtn}</div>
       </a>`;
     }).join('') + '</div>';
 
@@ -385,6 +398,65 @@
 
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  let _photoTargetPetId = null;
+
+  const photoFileInput = document.getElementById('photoFileInput');
+  photoFileInput.addEventListener('change', async () => {
+    const petId = _photoTargetPetId;
+    if (!petId || !photoFileInput.files.length) return;
+
+    const btn = document.getElementById('addphotos-' + petId);
+    if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+
+    const keys = [];
+    for (const file of Array.from(photoFileInput.files).slice(0, 5)) {
+      const fd = new FormData();
+      fd.append('image', file);
+      try {
+        const res = await fetch('/api/images/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (res.ok && data.key) keys.push(data.key);
+      } catch { /* skip failed uploads */ }
+    }
+
+    photoFileInput.value = '';
+
+    if (!keys.length) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Add Photos'; }
+      alert('Upload failed. Please try again.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/pets/${petId}/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo_keys: keys })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Failed to save photos');
+        if (btn) { btn.disabled = false; btn.textContent = 'Add Photos'; }
+        return;
+      }
+    } catch {
+      alert('Network error. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Add Photos'; }
+      return;
+    }
+
+    loadListings();
+  });
+
+  function pickPhotos(e, petId) {
+    e.preventDefault();
+    e.stopPropagation();
+    _photoTargetPetId = petId;
+    photoFileInput.value = '';
+    photoFileInput.click();
+    return false;
   }
 
   async function endListing(e, petId) {
