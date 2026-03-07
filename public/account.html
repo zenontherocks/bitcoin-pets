@@ -99,6 +99,14 @@
     }
     .btn-add-photos:hover { background: #fef0d4; }
     .btn-add-photos:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-list-similar {
+      font-size: 0.68rem; font-weight: 700; color: #2b6cb0;
+      background: #ebf4ff; border: 1px solid #90cdf4;
+      border-radius: 999px; padding: 0.2rem 0.55rem;
+      cursor: pointer; white-space: nowrap; line-height: 1.4;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-list-similar:hover { background: #dbeafe; }
     .badge-available { background: #d4f5e2; color: #276749; }
     .badge-pending   { background: #fef3e2; color: #92400e; }
     .badge-sold      { background: #f0f0f0; color: #888; }
@@ -371,6 +379,7 @@
       const addPhotosBtn = p.status === 'available'
         ? `<button class="btn-add-photos" id="addphotos-${p.id}" onclick="return pickPhotos(event,'${p.id}')">Add Photos</button>`
         : '';
+      const listSimilarBtn = `<a class="btn-list-similar" href="/sell?from_pet=${p.id}" onclick="event.stopPropagation()">List New Similar</a>`;
       return `<a class="pet-row" href="/pet?id=${p.id}">
         ${thumb}
         <div class="pet-info">
@@ -378,7 +387,7 @@
           <div class="pet-meta">${meta ? meta + (priceStr ? ' · ' : '') : ''}${priceStr}</div>
           ${expiryHtml}
         </div>
-        <div class="pet-right">${badge}${addPhotosBtn}${endBtn}</div>
+        <div class="pet-right">${badge}${addPhotosBtn}${endBtn}${listSimilarBtn}</div>
       </a>`;
     }).join('') + '</div>';
 

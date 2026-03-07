@@ -745,6 +745,31 @@
       alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    function prefillFromPet(pet) {
+      const fields = ['name', 'breed', 'gender', 'color', 'vaccinations',
+                      'registry_name', 'registry_number', 'microchip_id',
+                      'description', 'health_info'];
+      for (const f of fields) {
+        if (pet[f] != null) document.getElementById(f).value = pet[f];
+      }
+      if (pet.species) {
+        const speciesEl = document.getElementById('species');
+        for (const opt of speciesEl.options) {
+          if (opt.value === pet.species) { speciesEl.value = pet.species; break; }
+        }
+      }
+      if (pet.date_of_birth) document.getElementById('date_of_birth').value = pet.date_of_birth;
+      if (pet.weight_lbs != null) document.getElementById('weight_lbs').value = pet.weight_lbs;
+      if (pet.price_btc != null) {
+        btcInput.value = pet.price_btc;
+        if (pet.price_usd != null) usdInput.value = pet.price_usd;
+        priceCurrency = pet.price_currency || 'btc';
+        updateAnchorState();
+        updateEquivLine();
+      }
+      // Don't pre-fill bitcoin_address — let account default handle it
+    }
+
     // Check auth before showing the form
     (async () => {
       try {
@@ -752,12 +777,25 @@
         const data = await res.json();
         if (data.user) {
           formWrap.style.display = '';
-          // Pre-fill BTC address from account default
-          fetch('/api/account').then(r => r.json()).then(d => {
-            if (d.user && d.user.bitcoin_address) {
-              document.getElementById('bitcoin_address').value = d.user.bitcoin_address;
-            }
-          }).catch(() => {});
+          const fromPetId = new URLSearchParams(location.search).get('from_pet');
+          if (fromPetId) {
+            fetch('/api/pets/' + encodeURIComponent(fromPetId))
+              .then(r => r.json())
+              .then(d => {
+                if (d.pet) {
+                  prefillFromPet(d.pet);
+                  document.querySelector('#formWrap h1').textContent = 'Create a similar listing';
+                }
+              })
+              .catch(() => {});
+          } else {
+            // Pre-fill BTC address from account default
+            fetch('/api/account').then(r => r.json()).then(d => {
+              if (d.user && d.user.bitcoin_address) {
+                document.getElementById('bitcoin_address').value = d.user.bitcoin_address;
+              }
+            }).catch(() => {});
+          }
         } else {
           authGate.style.display = '';
         }
