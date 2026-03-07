@@ -376,8 +376,9 @@ async function handleEndListing(request, env, petId) {
   if (pet.user_id !== userRow.id) return json({ error: 'Forbidden' }, 403);
   if (pet.status !== 'available') return json({ error: 'Only available listings can be ended' }, 409);
 
-  await env.DB.prepare('DELETE FROM pet_pictures WHERE pet_id = ?').bind(petId).run();
-  await env.DB.prepare('DELETE FROM pets WHERE id = ?').bind(petId).run();
+  await env.DB.prepare(
+    "UPDATE pets SET status='ended', updated_at=datetime('now') WHERE id=?"
+  ).bind(petId).run();
 
   return json({ success: true });
 }
