@@ -123,24 +123,99 @@
       pointer-events: none;
     }
 
-    .currency-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.55rem 1.1rem;
-      border: 2px solid var(--orange);
-      border-radius: 999px;
-      background: var(--white);
-      color: var(--orange);
-      font-size: 0.875rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+    /* ── Price anchor cards ── */
+    .price-anchor-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: stretch;
+      gap: 0;
     }
-    .currency-toggle:hover { background: #fffaf3; }
-    .currency-toggle.locked { background: var(--orange); color: #fff; }
-    .currency-toggle .toggle-icon { font-size: 1rem; line-height: 1; }
-    .price-equiv { font-size: 0.8rem; color: #888; margin-top: 0.25rem; }
+
+    .price-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: var(--white);
+    }
+    .price-card:hover { border-color: #bbb; }
+    .price-card.active {
+      border-color: var(--orange);
+      background: #fffaf3;
+    }
+    .price-card-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #aaa;
+      margin-bottom: 0.45rem;
+    }
+    .price-card.active .price-card-label { color: var(--orange); }
+    .price-card .price-wrap { position: relative; }
+    .price-card .price-wrap input {
+      border: none;
+      padding: 0.3rem 3.2rem 0.3rem 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      background: transparent;
+      width: 100%;
+      color: var(--dark);
+      font-family: inherit;
+    }
+    .price-card .price-wrap input:focus { outline: none; }
+    .price-card .price-suffix {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.8rem;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    /* ── Middle anchor selector ── */
+    .anchor-selector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      padding: 0 0.65rem;
+    }
+    .anchor-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #bbb;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      transition: color 0.15s;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .anchor-btn:hover { color: var(--gray); }
+    .anchor-btn.active { color: var(--orange); }
+    .anchor-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .anchor-btn.active .anchor-dot {
+      background: var(--orange);
+      border-color: var(--orange);
+    }
+
+    .price-equiv { font-size: 0.8rem; color: #888; margin-top: 0.6rem; }
 
     /* ── Alert ── */
     .alert {
@@ -437,30 +512,34 @@
 
         <div class="section">
           <div class="section-title">Pricing</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="price_usd">Price in USD</label>
+          <div class="price-anchor-row">
+            <div class="price-card" id="cardUsd">
+              <div class="price-card-label">Dollars (USD)</div>
               <div class="price-wrap">
                 <input type="number" id="price_usd" placeholder="e.g. 500.00" min="0" step="0.01" />
                 <span class="price-suffix" style="color:#2d8a4e">USD</span>
               </div>
             </div>
-            <div class="form-group">
-              <label for="price_btc">Price in Bitcoin</label>
+
+            <div class="anchor-selector">
+              <button type="button" class="anchor-btn" id="anchorUsd">
+                <span class="anchor-dot"></span> USD
+              </button>
+              <button type="button" class="anchor-btn" id="anchorBtc">
+                <span class="anchor-dot"></span> BTC
+              </button>
+            </div>
+
+            <div class="price-card active" id="cardBtc">
+              <div class="price-card-label">Bitcoin (BTC)</div>
               <div class="price-wrap">
                 <input type="number" id="price_btc" name="price_btc" placeholder="e.g. 0.005" min="0" step="0.00000001" />
                 <span class="price-suffix">BTC</span>
               </div>
             </div>
-            <div class="form-group full" style="display:flex; flex-direction:column; gap:0.4rem; align-items:flex-start;">
-              <button type="button" id="currencyToggle" class="currency-toggle">
-                <span class="toggle-icon">&#8734;</span>
-                <span id="toggleLabel">Keep the price at 0 Bitcoin</span>
-              </button>
-              <div class="price-equiv" id="priceEquiv">Enter a price above to see the conversion</div>
-              <div class="form-hint">Customers always pay in sats. If you lock to USD, the sats amount adjusts with the market at checkout time. If you lock to Bitcoin, the USD display updates dynamically.</div>
-            </div>
           </div>
+          <div class="price-equiv" id="priceEquiv">Enter a price above to see the conversion</div>
+          <div class="form-hint" style="margin-top:0.35rem;">Customers always pay in sats. Anchor to USD and the sats amount adjusts with the market at checkout. Anchor to Bitcoin and the USD display updates dynamically.</div>
         </div>
 
         <div class="section">
@@ -509,8 +588,10 @@
 
     const usdInput     = document.getElementById('price_usd');
     const btcInput     = document.getElementById('price_btc');
-    const toggleBtn    = document.getElementById('currencyToggle');
-    const toggleLabel  = document.getElementById('toggleLabel');
+    const cardUsd      = document.getElementById('cardUsd');
+    const cardBtc      = document.getElementById('cardBtc');
+    const anchorUsdBtn = document.getElementById('anchorUsd');
+    const anchorBtcBtn = document.getElementById('anchorBtc');
     const priceEquivEl = document.getElementById('priceEquiv');
 
     async function fetchBtcPrice() {
@@ -533,18 +614,12 @@
       return Math.round(Number(n) * 1e8).toLocaleString('en-US') + ' sats';
     }
 
-    function updateToggleLabel() {
-      if (priceCurrency === 'btc') {
-        const btcVal = parseFloat(btcInput.value);
-        const label  = (!isNaN(btcVal) && btcVal > 0) ? formatBtcShort(btcVal) : '0 Bitcoin';
-        toggleLabel.textContent = 'Keep the price at ' + label;
-        toggleBtn.classList.remove('locked');
-      } else {
-        const usdVal = parseFloat(usdInput.value);
-        const label  = (!isNaN(usdVal) && usdVal > 0) ? formatUsd(usdVal) + ' Dollars' : '0 Dollars';
-        toggleLabel.textContent = 'Keep the price at ' + label;
-        toggleBtn.classList.add('locked');
-      }
+    function updateAnchorState() {
+      const isBtc = priceCurrency === 'btc';
+      cardBtc.classList.toggle('active', isBtc);
+      cardUsd.classList.toggle('active', !isBtc);
+      anchorBtcBtn.classList.toggle('active', isBtc);
+      anchorUsdBtn.classList.toggle('active', !isBtc);
     }
 
     function updateEquivLine() {
@@ -573,7 +648,7 @@
         }
       }
       updateEquivLine();
-      updateToggleLabel();
+      updateAnchorState();
       updatingFrom = null;
     });
 
@@ -589,18 +664,23 @@
         }
       }
       updateEquivLine();
-      updateToggleLabel();
+      updateAnchorState();
       updatingFrom = null;
     });
 
-    toggleBtn.addEventListener('click', () => {
-      priceCurrency = priceCurrency === 'btc' ? 'usd' : 'btc';
-      updateToggleLabel();
+    function setAnchor(currency) {
+      priceCurrency = currency;
+      updateAnchorState();
       updateEquivLine();
-    });
+    }
+
+    anchorBtcBtn.addEventListener('click', () => setAnchor('btc'));
+    anchorUsdBtn.addEventListener('click', () => setAnchor('usd'));
+    cardBtc.addEventListener('click', (e) => { if (!e.target.closest('input')) setAnchor('btc'); });
+    cardUsd.addEventListener('click', (e) => { if (!e.target.closest('input')) setAnchor('usd'); });
 
     fetchBtcPrice().then(() => {
-      updateToggleLabel();
+      updateAnchorState();
       updateEquivLine();
     });
 
