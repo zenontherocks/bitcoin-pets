@@ -25,7 +25,7 @@ jobs:
 
       - name: Lint JavaScript
         run: |
-          npx --yes eslint@8 src/worker.js --no-eslintrc --rule '{"no-undef": "warn"}' --parser-options=sourceType:module
+          npx --yes eslint@8 src/worker.js --no-eslintrc --rule '{"no-undef": "warn"}' --parser-options=ecmaVersion:2022,sourceType:module
 
       - name: Create PR if needed
         id: pr
