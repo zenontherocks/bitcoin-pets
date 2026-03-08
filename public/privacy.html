@@ -28,6 +28,7 @@
     footer a:hover { text-decoration: underline; }
   </style>
   <script src="/navbar.js"></script>
+  <script src="/shared.js"></script>
 </head>
 <body>
 
@@ -67,7 +68,7 @@
     <p>Your account data is retained for as long as your account exists. Listings you remove are deleted from public view but may remain in our database backups for a short period. You may request deletion of your account and associated data by contacting us.</p>
 
     <h2>6. Security</h2>
-    <p>Passwords are stored as SHA-256 hashes. All data is transmitted over HTTPS. We take reasonable technical precautions to protect your information, but no system is completely secure.</p>
+    <p>Passwords are stored using PBKDF2 key derivation with a random salt. All data is transmitted over HTTPS. We take reasonable technical precautions to protect your information, but no system is completely secure.</p>
 
     <h2>7. Children's Privacy</h2>
     <p>Bitcoin Pets is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe we have inadvertently collected such information, please contact us so we can delete it.</p>
@@ -87,8 +88,5 @@
   </p>
 </footer>
 
-<script>
-  document.getElementById('year').textContent = new Date().getFullYear();
-</script>
 </body>
 </html>

@@ -123,6 +123,7 @@
     footer a:hover { text-decoration: underline; }
   </style>
   <script src="/navbar.js"></script>
+  <script src="/shared.js"></script>
 </head>
 <body>
 
@@ -249,8 +250,6 @@
 </footer>
 
 <script>
-  document.getElementById('year').textContent = new Date().getFullYear();
-
   function val(id) { return document.getElementById(id).value.trim(); }
   function setVal(id, v) { document.getElementById(id).value = v || ''; }
 
@@ -358,12 +357,12 @@
       return;
     }
 
-    const speciesEmoji = { dog:'🐶', cat:'🐱', bird:'🐦', fish:'🐠', reptile:'🦎', 'small animal':'🐹', other:'🐾' };
+    // SPECIES_ICON is provided by shared.js
     const badgeClass = { available:'badge-available', pending:'badge-pending', sold:'badge-sold', ended:'badge-ended' };
     const badgeLabel = { available:'Available', pending:'Pending', sold:'Sold', ended:'Ended' };
 
     el.innerHTML = '<div class="pet-list">' + pets.map(p => {
-      const emoji = speciesEmoji[(p.species || '').toLowerCase()] || '🐾';
+      const emoji = SPECIES_ICON[(p.species || '').toLowerCase()] || '&#128062;';
       const thumb = p.photo_url
         ? `<img class="pet-thumb" src="${p.photo_url}" alt="${escHtml(p.name)}" loading="lazy" />`
         : `<div class="pet-thumb-placeholder">${emoji}</div>`;
@@ -405,9 +404,7 @@
     });
   }
 
-  function escHtml(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+  // escHtml is provided by shared.js
 
   let _photoTargetPetId = null;
 
