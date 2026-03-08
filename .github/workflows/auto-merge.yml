@@ -13,6 +13,19 @@ jobs:
   auto-merge:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Check for SQL injection patterns
+        run: |
+          if grep -Pn '`(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*\$\{' src/worker.js; then
+            echo "Possible string-interpolated SQL detected. Use parameterized queries."
+            exit 1
+          fi
+
+      - name: Lint JavaScript
+        run: npx --yes eslint src/worker.js --no-eslintrc --rule '{"no-undef": "warn"}'
+
       - name: Create PR if needed
         id: pr
         uses: actions/github-script@v7
