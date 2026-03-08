@@ -90,3 +90,7 @@ Worker bindings (from `wrangler.toml`):
 8. **No redundant `/api/me` calls.** The navbar already fetches it; pages that also need session data should share that result or make one additional targeted call.
 9. **PBKDF2 for all password hashing** — use `hashPassword()` / `verifyPassword()`, never raw SHA-256.
 10. **New API routes follow the existing pattern**: add a branch in `handleApi()`, write a dedicated `handle*` function, keep it flat.
+11. **`handleApi()` is routing only.** No logic lives inside it — just pattern matching and dispatch calls. Keep it that way.
+12. **If a handler exceeds ~60 lines, decompose it.** Extract private helpers named after the handler (e.g. `createPet_insertPhotos()`). Don't let a single function grow unbounded.
+13. **The `scheduled` cron has one helper per pass.** The two passes (expire orders, confirm payments) each get their own top-level function (`expireOrders`, `confirmPayments`). `scheduled` just calls them.
+14. **Each `// ── Section ──` block has a ~150-line soft budget.** Exceeding it is a signal to extract helpers within that section, not a hard stop.
