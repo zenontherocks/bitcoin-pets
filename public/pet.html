@@ -409,6 +409,9 @@
     }
 
     function primaryPriceStr(pet) {
+      if (pet.price_currency === 'usd' && pet.price_usd != null && btcPriceUsd) {
+        return formatSats(pet.price_usd / btcPriceUsd);
+      }
       return formatSats(pet.price_btc);
     }
 
@@ -450,6 +453,11 @@
       const secEl = document.getElementById('priceSecondary');
       if (secEl && window._loadedPet && btcPriceUsd) {
         secEl.textContent = secondaryPriceStr(window._loadedPet);
+      }
+      // For USD-anchored listings, recompute sats from live rate
+      const valEl = document.getElementById('priceValue');
+      if (valEl && window._loadedPet && window._loadedPet.price_currency === 'usd' && btcPriceUsd) {
+        valEl.textContent = primaryPriceStr(window._loadedPet);
       }
     }).catch(() => {});
 

@@ -185,6 +185,10 @@
         const usd = parseFloat(el.dataset.priceUsd);
         const cur = el.dataset.priceCurrency;
         el.textContent = buildSubPrice(btc, usd, cur);
+        // For USD-anchored listings, recompute sats from live rate
+        if (cur === 'usd' && !isNaN(usd) && btcPriceUsd) {
+          el.previousElementSibling.textContent = formatSats(usd / btcPriceUsd);
+        }
       });
     }).catch(() => {});
 
@@ -212,6 +216,9 @@
     }
 
     function primaryPrice(pet) {
+      if (pet.price_currency === 'usd' && pet.price_usd != null && btcPriceUsd) {
+        return formatSats(pet.price_usd / btcPriceUsd);
+      }
       return formatSats(pet.price_btc);
     }
 
