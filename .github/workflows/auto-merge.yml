@@ -24,7 +24,8 @@ jobs:
           fi
 
       - name: Lint JavaScript
-        run: npx --yes eslint src/worker.js --no-eslintrc --rule '{"no-undef": "warn"}'
+        run: |
+          npx --yes eslint src/worker.js --no-eslintrc --rule '{"no-undef": "warn"}'
 
       - name: Create PR if needed
         id: pr
