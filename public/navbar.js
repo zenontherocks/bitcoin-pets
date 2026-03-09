@@ -5,6 +5,7 @@
     'nav{background:#1a1a1a;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;}',
     '.nav-logo{font-size:1.3rem;font-weight:700;color:#f7931a;text-decoration:none;letter-spacing:-0.5px;}',
     '.nav-logo span{color:#fff;}',
+    '.nav-tagline{font-size:0.7rem;color:#777;font-style:italic;white-space:nowrap;margin-left:0.6rem;}',
     '.nav-links{list-style:none;display:flex;gap:0.25rem;align-items:center;}',
     '.nav-links a{color:#ccc;text-decoration:none;font-size:0.9rem;padding:0.4rem 0.75rem;border-radius:8px;transition:color 0.15s,background 0.15s;}',
     '.nav-links a:hover{color:#fff;background:#2e2e2e;}',
@@ -13,6 +14,7 @@
     '.nav-toggle{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:0.4rem;background:none;border:none;}',
     '.nav-toggle span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}',
     '@media(max-width:640px){',
+    '  .nav-tagline{display:none;}',
     '  nav{height:auto!important;min-height:56px;position:relative;padding:0 1rem;}',
     '  .nav-toggle{display:flex;}',
     '  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;background:#1a1a1a;padding:0.5rem 1rem 1rem;gap:0;border-top:1px solid #2e2e2e;z-index:99;}',
@@ -29,6 +31,7 @@
     const nav = document.createElement('nav');
     nav.innerHTML =
       '<a href="/" class="nav-logo">&#8383;<span>itcoin Pets</span></a>' +
+      '<span class="nav-tagline">(Website in development – coming soon maybe!)</span>' +
       '<button class="nav-toggle" aria-label="Toggle menu" onclick="this.closest(\'nav\').querySelector(\'.nav-links\').classList.toggle(\'open\')"><span></span><span></span><span></span></button>' +
       '<ul class="nav-links">' +
         '<li><a href="/browse">Browse Pets</a></li>' +
