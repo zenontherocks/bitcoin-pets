@@ -247,12 +247,12 @@
 </footer>
 
 <script type="module">
-  import { generateMnemonic, mnemonicToSeed, validateMnemonic } from 'https://cdn.jsdelivr.net/npm/@scure/bip39@1.5.4/+esm';
-  import { wordlist } from 'https://cdn.jsdelivr.net/npm/@scure/bip39@1.5.4/wordlists/english/+esm';
-  import { HDKey } from 'https://cdn.jsdelivr.net/npm/@scure/bip32@1.6.2/+esm';
-  import { bech32 } from 'https://cdn.jsdelivr.net/npm/@scure/base@1.2.4/+esm';
-  import { sha256 } from 'https://cdn.jsdelivr.net/npm/@noble/hashes@1.7.2/sha256.js';
-  import { ripemd160 } from 'https://cdn.jsdelivr.net/npm/@noble/hashes@1.7.2/ripemd160.js';
+  import { generateMnemonic, mnemonicToSeed, validateMnemonic } from 'https://esm.sh/@scure/bip39@1.5.4';
+  import { wordlist } from 'https://esm.sh/@scure/bip39@1.5.4/wordlists/english';
+  import { HDKey } from 'https://esm.sh/@scure/bip32@1.6.2';
+  import { bech32 } from 'https://esm.sh/@scure/base@1.2.4';
+  import { sha256 } from 'https://esm.sh/@noble/hashes@1.7.2/sha256';
+  import { ripemd160 } from 'https://esm.sh/@noble/hashes@1.7.2/ripemd160';
 
   var seedInput = document.getElementById('seedInput');
   var seedStatus = document.getElementById('seedStatus');
