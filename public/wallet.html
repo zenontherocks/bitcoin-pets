@@ -263,6 +263,11 @@
   var btnDerive = document.getElementById('btnDerive');
   var addrCount = document.getElementById('addrCount');
   var addrOutput = document.getElementById('addrOutput');
+  var addrPlaceholder = '<p class="addr-placeholder">Enter or generate a seed phrase above, then click Generate Addresses.</p>';
+
+  function clearAddresses() {
+    addrOutput.innerHTML = addrPlaceholder;
+  }
 
   function validateSeed() {
     var words = seedInput.value.trim();
@@ -293,18 +298,20 @@
 
   btnGenerate12.addEventListener('click', function () {
     seedInput.value = generateMnemonic(wordlist, 128);
+    clearAddresses();
     validateSeed();
   });
 
   btnGenerate24.addEventListener('click', function () {
     seedInput.value = generateMnemonic(wordlist, 256);
+    clearAddresses();
     validateSeed();
   });
 
   btnClear.addEventListener('click', function () {
     seedInput.value = '';
     passphraseInput.value = '';
-    addrOutput.innerHTML = '<p class="addr-placeholder">Enter or generate a seed phrase above, then click Generate Addresses.</p>';
+    clearAddresses();
     validateSeed();
   });
 
