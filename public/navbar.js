@@ -38,6 +38,7 @@
         '<li><a href="/sell">Sell a Pet</a></li>' +
         '<li><a href="/how-it-works">How It Works</a></li>' +
         '<li><a href="/about">About</a></li>' +
+        '<li><a href="/wallet" target="_blank" rel="noopener">Wallet</a></li>' +
         '<li id="navAuthItem"><a href="/login">Sign In</a></li>' +
         '<li id="navSignUpItem"><a href="/register" class="btn-signup">Sign Up</a></li>' +
       '</ul>';
