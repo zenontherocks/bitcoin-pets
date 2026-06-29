@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /**
- * Derive P2WPKH (native SegWit / bech32) addresses from an xpub.
+ * Derive P2WPKH (native SegWit / bech32) addresses from a zpub or xpub.
  *
  * Usage:
- *   node scripts/derive-addresses.js <xpub> <start_index> <count>
+ *   node scripts/derive-addresses.js <zpub|xpub> <start_index> <count>
  *
  * Outputs SQL INSERT statements to stdout. Pipe into wrangler to seed the DB:
- *   node scripts/derive-addresses.js xpub6C... 0 100 | \
+ *   node scripts/derive-addresses.js zpub6q... 0 100 | \
  *     wrangler d1 execute bitcoin-pets --file=-
  *
  * Dependencies (install locally before running):
- *   npm install bitcoinjs-lib @bitcoinerlab/secp256k1 tiny-secp256k1
+ *   npm install bitcoinjs-lib tiny-secp256k1 bip32 bs58check
  *
  * The derivation path used is m/0/<index>  (external chain, no hardened steps)
- * because xpub is already the account-level key.  This matches the standard
- * BIP84 receive-address derivation used by most wallets.
+ * because the zpub/xpub is already the account-level key.  This matches the
+ * standard BIP84 receive-address derivation used by most wallets.
  */
 
 'use strict';
@@ -22,14 +22,26 @@
 const bitcoin = require('bitcoinjs-lib');
 const ecc = require('tiny-secp256k1');
 const { BIP32Factory } = require('bip32');
+const bs58check = require('bs58check').default;
 
 const bip32 = BIP32Factory(ecc);
 
-function main() {
-  const [,, xpub, startArg, countArg] = process.argv;
+// zpub version bytes (BIP84 mainnet public) → xpub version bytes
+const ZPUB_VERSION = 0x04b24746;
+const XPUB_VERSION = 0x0488b21e;
 
-  if (!xpub || !startArg || !countArg) {
-    console.error('Usage: node derive-addresses.js <xpub> <start_index> <count>');
+function zpubToXpub(zpub) {
+  const data = bs58check.decode(zpub);
+  const buf = Buffer.from(data);
+  buf.writeUInt32BE(XPUB_VERSION, 0);
+  return bs58check.encode(buf);
+}
+
+function main() {
+  const [,, pubkey, startArg, countArg] = process.argv;
+
+  if (!pubkey || !startArg || !countArg) {
+    console.error('Usage: node derive-addresses.js <zpub|xpub> <start_index> <count>');
     process.exit(1);
   }
 
@@ -45,11 +57,16 @@ function main() {
     process.exit(1);
   }
 
+  let xpub = pubkey;
+  if (pubkey.startsWith('zpub')) {
+    xpub = zpubToXpub(pubkey);
+  }
+
   let node;
   try {
     node = bip32.fromBase58(xpub);
   } catch (e) {
-    console.error('Invalid xpub:', e.message);
+    console.error('Invalid key:', e.message);
     process.exit(1);
   }
 
