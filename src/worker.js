@@ -388,6 +388,7 @@ async function handleSyncDebug(request, env) {
     return json({ error: `GET /Account/LogOn failed: ${e.message}`, log });
   }
 
+  push(`login page snippet: ${loginHtml.slice(0, 500)}`);
   const tokenMatch = loginHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
   push(`CSRF token: ${tokenMatch ? 'found' : 'MISSING'}`);
 
