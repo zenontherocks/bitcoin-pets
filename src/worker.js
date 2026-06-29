@@ -214,6 +214,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
   }
+  if (url.pathname === '/api/admin/sync-debug' && request.method === 'GET') {
+    return handleSyncDebug(request, env);
+  }
 
   return json({ error: 'Not found' }, 404);
 }
@@ -360,6 +363,97 @@ async function handleBtcPrice() {
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
+
+async function handleSyncDebug(request, env) {
+  const log = [];
+  const push = (msg) => log.push(msg);
+
+  if (!env.PBT_EMAIL || !env.PBT_PASSWORD) {
+    return json({ error: 'PBT_EMAIL or PBT_PASSWORD secret not set', log });
+  }
+  push('secrets present');
+
+  // Step 1: login
+  let loginHtml, sessionCookie;
+  try {
+    const r = await fetch('https://pbtmarketplace.com/Account/LogOn');
+    push(`GET /Account/LogOn → ${r.status}`);
+    loginHtml = await r.text();
+    push(`login page length: ${loginHtml.length}`);
+    const raw = r.headers.get('set-cookie') || '';
+    const m = raw.match(/ASP\.NET_SessionId=([^;]+)/i);
+    sessionCookie = m ? `ASP.NET_SessionId=${m[1]}` : '';
+    push(`session cookie: ${sessionCookie ? 'found' : 'missing'}`);
+  } catch (e) {
+    return json({ error: `GET /Account/LogOn failed: ${e.message}`, log });
+  }
+
+  const tokenMatch = loginHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
+  push(`CSRF token: ${tokenMatch ? 'found' : 'MISSING'}`);
+
+  const body = new URLSearchParams({
+    Email: env.PBT_EMAIL,
+    Password: env.PBT_PASSWORD,
+    __RequestVerificationToken: tokenMatch ? tokenMatch[1] : '',
+    RememberMe: 'false',
+  });
+
+  let authCookie = null;
+  try {
+    const r = await fetch('https://pbtmarketplace.com/Account/LogOn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cookie': sessionCookie },
+      body: body.toString(),
+      redirect: 'manual',
+    });
+    push(`POST /Account/LogOn → ${r.status}`);
+    const raw = r.headers.get('set-cookie') || '';
+    push(`set-cookie header: ${raw.slice(0, 120)}`);
+    const m = raw.match(/\.AspNet\.ApplicationCookie=([^;]+)/);
+    authCookie = m ? `.AspNet.ApplicationCookie=${m[1]}` : null;
+    push(`auth cookie: ${authCookie ? 'found' : 'MISSING — login likely failed'}`);
+  } catch (e) {
+    return json({ error: `POST /Account/LogOn failed: ${e.message}`, log });
+  }
+
+  if (!authCookie) return json({ error: 'Login failed', log });
+
+  // Step 2: browse page
+  try {
+    const r = await fetch('https://pbtmarketplace.com/Browse', {
+      headers: { Cookie: authCookie }
+    });
+    push(`GET /Browse → ${r.status}`);
+    const html = await r.text();
+    push(`browse page length: ${html.length}`);
+    const re = /href="\/Listing\/Details\/(\d+)\/([^"]+)"/g;
+    const listings = [];
+    let m;
+    while ((m = re.exec(html)) !== null) listings.push({ id: m[1], slug: m[2] });
+    push(`listings found on page 1: ${listings.length}`);
+    if (listings.length > 0) push(`first listing: ${JSON.stringify(listings[0])}`);
+
+    // Sample the first listing detail
+    if (listings.length > 0) {
+      const { id, slug } = listings[0];
+      const dr = await fetch(`https://pbtmarketplace.com/Listing/Details/${id}/${slug}`, {
+        headers: { Cookie: authCookie }
+      });
+      push(`GET /Listing/Details/${id}/${slug} → ${dr.status}`);
+      const dhtml = await dr.text();
+      push(`detail page length: ${dhtml.length}`);
+      const priceMatch = dhtml.match(/data-price="([\d.]+)"/);
+      push(`data-price: ${priceMatch ? priceMatch[1] : 'NOT FOUND'}`);
+      // Show a snippet around where the price might be
+      const priceIdx = dhtml.indexOf('price');
+      if (priceIdx > 0) push(`context around 'price': ${dhtml.slice(Math.max(0, priceIdx-50), priceIdx+100)}`);
+    }
+  } catch (e) {
+    return json({ error: `Browse/detail fetch failed: ${e.message}`, log });
+  }
+
+  return json({ log });
+}
 
 async function handleAddressIndex(request, env) {
   const row = await env.DB.prepare(
