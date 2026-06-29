@@ -371,24 +371,23 @@ async function handleSyncDebug(request, env) {
 
   function push(msg) { log.push(msg); }
 
-  // Fetch pages.js and dump the full text so we can read it
-  const r = await fetch(`${base}/Content/new/js/pages.js`, { headers: { 'User-Agent': ua } });
-  const js = await r.text();
-  push(`pages.js: ${js.length} bytes`);
+  const r = await fetch(`${base}/Browse`, { headers: { 'User-Agent': ua } });
+  const html = await r.text();
+  push(`Browse page: ${html.length} bytes`);
 
-  // Look for ajax/url patterns near DataTable initializations
-  const patterns = [
-    /ajax\s*[:=]\s*["'`]([^"'`]+)["'`]/g,
-    /url\s*[:=]\s*["'`](\/[^"'`\s]{2,})["'`]/g,
-    /"(\/[A-Z][a-zA-Z]+\/[A-Za-z]+[^"]{0,60})"/g,
-  ];
-  const found = new Set();
-  for (const pat of patterns) {
-    let m;
-    while ((m = pat.exec(js)) !== null) found.add(m[1]);
+  // Extract all inline <script> blocks
+  const inlineScripts = [];
+  const re = /<script(?![^>]+src)[^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const s = m[1].trim();
+    if (s.length > 10) inlineScripts.push(s);
   }
-  push(`URL-like strings found: ${found.size}`);
-  for (const u of [...found].slice(0, 40)) push(`  ${u}`);
+  push(`inline script blocks: ${inlineScripts.length}`);
+  for (let i = 0; i < inlineScripts.length; i++) {
+    push(`--- block ${i} (${inlineScripts[i].length} chars) ---`);
+    push(inlineScripts[i].slice(0, 800));
+  }
 
   return json({ log });
 }
