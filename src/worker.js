@@ -385,7 +385,7 @@ async function handleSyncDebug(request, env) {
       const r = await fetch(`https://pbtmarketplace.com${ep}`, { headers });
       const text = await r.text();
       push(`${ep} → ${r.status} (${text.length} bytes)`);
-      if (r.status < 300) push(`snippet: ${text.slice(0, 300)}`);
+      push(`snippet: ${text.slice(0, 300)}`);
     } catch (e) {
       push(`${ep} → ERROR: ${e.message}`);
     }
