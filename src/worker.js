@@ -367,17 +367,34 @@ async function handleBtcPrice() {
 async function handleSyncDebug(request, env) {
   const log = [];
   const base = 'https://pbtmarketplace.com';
-  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36';
 
   function push(msg) { log.push(msg); }
 
-  // GET the login page — dump full HTML and all headers
-  const r = await fetch(`${base}/Account/LogOn`, { headers: { 'User-Agent': ua } });
-  push(`GET /Account/LogOn → ${r.status}`);
-  push(`headers: ${JSON.stringify(Object.fromEntries(r.headers))}`);
+  if (!env.PBT_EMAIL || !env.PBT_PASSWORD) {
+    return json({ error: 'secrets not set', log });
+  }
+
+  // Test corrected login
+  const cookie = await pbtLogin(env);
+  push(`login: ${cookie ? 'SUCCESS — got auth cookie' : 'FAILED — no auth cookie'}`);
+  if (!cookie) return json({ error: 'login failed', log });
+
+  // Fetch Browse page with auth cookie
+  const r = await fetch(`${base}/Browse`, { headers: { Cookie: cookie } });
   const html = await r.text();
-  push(`full HTML (${html.length} bytes):`);
-  push(html);
+  push(`GET /Browse → ${r.status} (${html.length} bytes)`);
+
+  // Count listing links
+  const listingRe = /href="\/Listing\/Details\/(\d+)\/([^"]+)"/g;
+  const listings = [];
+  let m;
+  while ((m = listingRe.exec(html)) !== null) listings.push({ id: m[1], slug: m[2] });
+  push(`listing links found: ${listings.length}`);
+  if (listings.length) push(`first few: ${JSON.stringify(listings.slice(0, 3))}`);
+
+  // Show snippet of the page body to understand structure
+  const bodyStart = html.indexOf('<body');
+  push(`body snippet: ${html.slice(bodyStart, bodyStart + 600)}`);
 
   return json({ log });
 }
@@ -487,34 +504,18 @@ async function syncPbtListings(env) {
 }
 
 async function pbtLogin(env) {
-  // Step 1: GET login page to capture antiforgery token and session cookie
-  let loginHtml, sessionCookie;
-  try {
-    const r = await fetch('https://pbtmarketplace.com/Account/LogOn');
-    loginHtml = await r.text();
-    const raw = r.headers.get('set-cookie') || '';
-    const m = raw.match(/ASP\.NET_SessionId=([^;]+)/i);
-    sessionCookie = m ? `ASP.NET_SessionId=${m[1]}` : '';
-  } catch { return null; }
-
-  const tokenMatch = loginHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
-  const token = tokenMatch ? tokenMatch[1] : '';
-
-  // Step 2: POST credentials
+  // No CSRF token; form fields are `username` and `password` (not Email/Password)
   const body = new URLSearchParams({
-    Email: env.PBT_EMAIL,
-    Password: env.PBT_PASSWORD,
-    __RequestVerificationToken: token,
-    RememberMe: 'false',
+    username: env.PBT_EMAIL,
+    password: env.PBT_PASSWORD,
+    returnUrl: '',
+    rememberMe: 'false',
   });
 
   try {
     const r = await fetch('https://pbtmarketplace.com/Account/LogOn', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': sessionCookie,
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
       redirect: 'manual',
     });
