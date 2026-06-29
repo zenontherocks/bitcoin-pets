@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bitcoin-Pets.com &mdash; Buy &amp; Sell Pets with Bitcoin</title>
+  <title>Bitcoin-Pets.com &mdash; Buy Pets with Bitcoin</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -26,7 +26,6 @@
       min-height: 100vh;
     }
 
-    /* ── Hero ── */
     .hero {
       background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
       color: var(--white);
@@ -55,10 +54,7 @@
       margin-bottom: 1.25rem;
     }
 
-    .hero h1 em {
-      font-style: normal;
-      color: var(--orange);
-    }
+    .hero h1 em { font-style: normal; color: var(--orange); }
 
     .hero p {
       font-size: 1.15rem;
@@ -86,36 +82,19 @@
     }
 
     .btn:active { transform: scale(0.98); }
-
     .btn-primary { background: var(--orange); color: var(--white); }
     .btn-primary:hover { background: var(--orange-dark); }
-
-    .btn-outline {
-      background: transparent;
-      color: var(--white);
-      border: 2px solid #555;
-    }
-
+    .btn-outline { background: transparent; color: var(--white); border: 2px solid #555; }
     .btn-outline:hover { border-color: #888; }
 
-    /* ── How it works ── */
     .how {
       padding: 5rem 2rem;
       background: var(--light-gray);
       text-align: center;
     }
 
-    .section-title {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .section-sub {
-      color: var(--gray);
-      margin-bottom: 3rem;
-      font-size: 1rem;
-    }
+    .section-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .section-sub { color: var(--gray); margin-bottom: 3rem; font-size: 1rem; }
 
     .cards {
       display: flex;
@@ -136,18 +115,12 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
 
-    .card-icon {
-      font-size: 2.25rem;
-      margin-bottom: 1rem;
-    }
-
+    .card-icon { font-size: 2.25rem; margin-bottom: 1rem; }
     .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
     .card p  { font-size: 0.9rem; color: var(--gray); line-height: 1.6; }
 
-    /* ── Main ── */
     main { flex: 1; }
 
-    /* ── Footer ── */
     footer {
       background: var(--dark);
       color: #888;
@@ -167,15 +140,15 @@
   <main>
     <section class="hero">
       <div class="hero-badge">Powered by Bitcoin</div>
-      <h1>The marketplace for pets,<br>paid in <em>bitcoin</em>.</h1>
+      <h1>Find your next pet,<br>pay in <em>bitcoin</em>.</h1>
       <p>
-        Bitcoin Pets connects responsible breeders and pet owners with buyers
-        who share a love for animals&mdash;and a preference for borderless,
-        permissionless payments.
+        Bitcoin Pets sources quality puppies and kittens from reputable breeders
+        and delivers them straight to your door &mdash; no bank account required,
+        no payment processors, just Bitcoin.
       </p>
       <div class="hero-actions">
         <a href="/browse" class="btn btn-primary">Browse Pets</a>
-        <a href="/sell" class="btn btn-outline">List Your Pet</a>
+        <a href="/how-it-works" class="btn btn-outline">How It Works</a>
       </div>
     </section>
 
@@ -186,22 +159,22 @@
         <div class="card">
           <div class="card-icon">&#128269;</div>
           <h3>Browse listings</h3>
-          <p>Search pets by species, breed, location, and price. Every listing includes photos, health records, and registry info.</p>
+          <p>Search dogs and cats by breed. Every listing includes photos, health records, and registry info sourced directly from the breeder.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">&#128230;</div>
+          <h3>Enter your info</h3>
+          <p>No account needed. Just provide your name, email, phone, and shipping address at checkout.</p>
         </div>
         <div class="card">
           <div class="card-icon">&#8383;</div>
           <h3>Pay with Bitcoin</h3>
-          <p>Send payment directly to the seller&rsquo;s Bitcoin address&mdash;no banks, no chargebacks, no middlemen.</p>
+          <p>Send Bitcoin to your unique invoice address. We confirm your payment on-chain and handle the rest.</p>
         </div>
         <div class="card">
           <div class="card-icon">&#128062;</div>
-          <h3>Meet your pet</h3>
-          <p>Coordinate pickup or delivery with your seller. Your new companion is just a few blocks away.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">&#128196;</div>
-          <h3>Sell your pet</h3>
-          <p>Create a free listing in minutes. Add pictures, health info, and your asking price in BTC to reach buyers worldwide.</p>
+          <h3>We ship to you</h3>
+          <p>Once payment is confirmed, we purchase the pet from the breeder and arrange delivery to your door.</p>
         </div>
       </div>
     </section>
@@ -215,7 +188,6 @@
       <a href="/terms">Terms of Service</a>
     </p>
   </footer>
-
 
 </body>
 </html>
