@@ -1,6 +1,7 @@
 -- Bitcoin Pets Marketplace - D1 Database Schema
--- All listings are imported from pbtmarketplace.com via the sync cron.
--- No user accounts or seller features — buyers check out anonymously.
+-- Listings are imported from pbtmarketplace.com via the sync cron.
+-- No user accounts; buyers check out with contact/shipping info only.
+-- BTC addresses are derived at order time from BTC_XPUB (Worker secret).
 
 -- Pets: listings imported from pbtmarketplace.com
 CREATE TABLE pets (
@@ -62,12 +63,10 @@ CREATE TABLE orders (
   buyer_country   TEXT NOT NULL DEFAULT 'US'
 );
 
--- Platform BTC addresses: pre-derived from xpub offline, loaded via derive-addresses.js.
--- One address is assigned per order so the cron can match incoming payments.
-CREATE TABLE platform_addresses (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  address           TEXT NOT NULL UNIQUE,
-  derivation_index  INTEGER NOT NULL,
-  assigned_order_id TEXT REFERENCES orders(id),
-  assigned_at       TEXT
+-- Key-value store for worker settings.
+-- next_address_index: monotonically increasing BIP32 derivation index for payment addresses.
+CREATE TABLE settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
 );
+INSERT INTO settings (key, value) VALUES ('next_address_index', '0');

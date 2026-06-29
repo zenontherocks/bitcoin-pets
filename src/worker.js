@@ -1,3 +1,150 @@
+// ── BIP32 / BIP84 address derivation ─────────────────────────────────────────
+// Derives native SegWit (P2WPKH / bech32 bc1q…) addresses from a zpub.
+// Only public-key operations are needed: HMAC-SHA512 (WebCrypto) + secp256k1
+// point arithmetic (@noble/secp256k1 — pure JS, runs in Workers).
+//
+// Derivation path: m/0/<index>  (external chain; zpub is already account-level)
+
+import { Point } from '@noble/secp256k1';
+import { hmac } from '@noble/hashes/hmac.js';
+import { sha256, sha512 } from '@noble/hashes/sha2.js';
+import { ripemd160 } from '@noble/hashes/legacy.js';
+
+const B58_CHARS = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+function b58decode(s) {
+  let n = 0n;
+  for (const c of s) {
+    const d = B58_CHARS.indexOf(c);
+    if (d < 0) throw new Error('Invalid base58 char: ' + c);
+    n = n * 58n + BigInt(d);
+  }
+  const hex = n.toString(16).padStart(50, '0');
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  // prepend leading-zero bytes encoded as '1's
+  let leading = 0;
+  for (const c of s) { if (c === '1') leading++; else break; }
+  const out = new Uint8Array(leading + bytes.length);
+  out.set(bytes, leading);
+  return out;
+}
+
+function b58checkDecode(s) {
+  const bytes = b58decode(s);
+  // last 4 bytes = checksum; rest = payload
+  return bytes.slice(0, -4);
+}
+
+// Convert zpub → raw xpub bytes (swap BIP84 version 0x04b24746 → BIP32 0x0488b21e)
+function zpubToXpubBytes(zpub) {
+  const buf = b58checkDecode(zpub);
+  const view = new DataView(buf.buffer, buf.byteOffset);
+  view.setUint32(0, 0x0488b21e, false);
+  return buf;
+}
+
+// Parse a 78-byte BIP32 serialised public key into { depth, childNumber, chainCode, publicKey }
+function parseBip32(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset);
+  return {
+    depth:       bytes[4],
+    childNumber: view.getUint32(9, false),
+    chainCode:   bytes.slice(13, 45),
+    publicKey:   bytes.slice(45, 78),
+  };
+}
+
+// Derive a non-hardened child public key (CKDpub)
+function ckdPub(parentKey, index) {
+  const data = new Uint8Array(37);
+  data.set(parentKey.publicKey, 0);
+  new DataView(data.buffer).setUint32(33, index, false);
+  const I = hmac(sha512, parentKey.chainCode, data);
+  const IL = I.slice(0, 32);
+  const IR = I.slice(32);
+  // child pubkey = point_add(parent, G * IL)
+  let ilBig = 0n;
+  for (const b of IL) ilBig = (ilBig << 8n) | BigInt(b);
+  const childPoint = Point.fromBytes(parentKey.publicKey).add(Point.BASE.multiply(ilBig));
+  return { publicKey: childPoint.toBytes(true), chainCode: IR };
+}
+
+// Hash160 = RIPEMD160(SHA256(bytes))
+function hash160(bytes) {
+  return ripemd160(sha256(bytes));
+}
+
+// Encode a P2WPKH (bech32 bc1q…) address from a 20-byte pubKeyHash
+function p2wpkhAddress(pubKeyHash) {
+  // witness version 0 + 20-byte program → bech32
+  const CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+  const hrp = 'bc';
+
+  function polymod(values) {
+    let chk = 1n;
+    const GEN = [0x3b6a57b2n, 0x26508e6dn, 0x1ea119fan, 0x3d4233ddn, 0x2a1462b3n];
+    for (const v of values) {
+      const b = chk >> 25n;
+      chk = ((chk & 0x1ffffffn) << 5n) ^ BigInt(v);
+      for (let i = 0; i < 5; i++) if ((b >> BigInt(i)) & 1n) chk ^= GEN[i];
+    }
+    return chk;
+  }
+
+  function hrpExpand(hrp) {
+    const r = [];
+    for (const c of hrp) r.push(c.charCodeAt(0) >> 5);
+    r.push(0);
+    for (const c of hrp) r.push(c.charCodeAt(0) & 31);
+    return r;
+  }
+
+  function convertbits(data, frombits, tobits, pad) {
+    let acc = 0, bits = 0;
+    const ret = [];
+    const maxv = (1 << tobits) - 1;
+    for (const v of data) {
+      acc = (acc << frombits) | v;
+      bits += frombits;
+      while (bits >= tobits) { bits -= tobits; ret.push((acc >> bits) & maxv); }
+    }
+    if (pad && bits) ret.push((acc << (tobits - bits)) & maxv);
+    return ret;
+  }
+
+  const witprog = convertbits(pubKeyHash, 8, 5, true);
+  const data = [0, ...witprog]; // witness version 0
+  const checksumInput = [...hrpExpand(hrp), ...data, 0, 0, 0, 0, 0, 0];
+  const mod = polymod(checksumInput) ^ 1n;
+  const checksum = [];
+  for (let i = 5; i >= 0; i--) checksum.push(Number((mod >> BigInt(i * 5)) & 31n));
+  return hrp + '1' + [...data, ...checksum].map(d => CHARSET[d]).join('');
+}
+
+// Derive the P2WPKH address at path m/0/<index> from a zpub string
+function deriveAddress(zpub, index) {
+  const accountBytes = zpubToXpubBytes(zpub);
+  const account = parseBip32(accountBytes);
+  const chain   = ckdPub(account, 0);      // external chain
+  const child   = ckdPub(chain, index);    // receive address at index
+  return p2wpkhAddress(hash160(child.publicKey));
+}
+
+// Atomically claim the next derivation index, increment it in DB, return derived address.
+// BTC_XPUB must be set as a Worker secret (wrangler secret put BTC_XPUB).
+async function claimNextAddress(env) {
+  if (!env.BTC_XPUB) throw new Error('BTC_XPUB secret not configured');
+  const row = await env.DB.prepare(
+    "SELECT value FROM settings WHERE key='next_address_index'"
+  ).first();
+  const index = parseInt(row?.value ?? '0', 10);
+  await env.DB.prepare(
+    "UPDATE settings SET value=? WHERE key='next_address_index'"
+  ).bind(String(index + 1)).run();
+  return { address: deriveAddress(env.BTC_XPUB, index), index };
+}
+
 // ── Entrypoints ───────────────────────────────────────────────────────────────
 // The default export provides two entrypoints consumed by the Cloudflare runtime:
 //   • fetch     — handles every HTTP request
@@ -64,8 +211,8 @@ async function handleApi(request, env, url) {
   }
 
   // Admin
-  if (url.pathname === '/api/admin/address-pool' && request.method === 'GET') {
-    return handleAddressPool(request, env);
+  if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
+    return handleAddressIndex(request, env);
   }
 
   return json({ error: 'Not found' }, 404);
@@ -122,8 +269,8 @@ async function handleGetPet(request, env, id) {
 
 // ── Orders & Payments ─────────────────────────────────────────────────────────
 
-// Creates a 30-minute Bitcoin invoice for a listing. Collects buyer contact info,
-// assigns a platform address from the pre-loaded pool, and flips the pet to 'pending'.
+// Creates a 30-minute Bitcoin invoice for a listing. Derives a fresh BIP32
+// address from BTC_XPUB at the next unused index, then flips the pet to 'pending'.
 async function handleCreateOrder(request, env, petId) {
   const pet = await env.DB.prepare(
     'SELECT id, name, status, price_usd FROM pets WHERE id = ?'
@@ -158,15 +305,15 @@ async function handleCreateOrder(request, env, petId) {
     return json({ error: 'Could not fetch current BTC price. Please try again.' }, 502);
   }
 
-  // Claim the next unassigned address from the platform pool
-  const addrRow = await env.DB.prepare(
-    'SELECT id, address FROM platform_addresses WHERE assigned_order_id IS NULL ORDER BY id LIMIT 1'
-  ).first();
-  if (!addrRow) {
-    return json({ error: 'No payment addresses available. Please contact support.' }, 503);
+  // Derive the next fresh address from the xpub HD wallet
+  let derived;
+  try {
+    derived = await claimNextAddress(env);
+  } catch (e) {
+    return json({ error: 'Payment system not configured. Please contact support.' }, 503);
   }
 
-  const orderId  = crypto.randomUUID();
+  const orderId   = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
   await env.DB.prepare(`
@@ -175,7 +322,7 @@ async function handleCreateOrder(request, env, petId) {
       buyer_city, buyer_state, buyer_zip, buyer_country)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    orderId, petId, addrRow.address, amountBtc, expiresAt,
+    orderId, petId, derived.address, amountBtc, expiresAt,
     buyer_name.trim(), buyer_email.trim().toLowerCase(), buyer_phone.trim(),
     buyer_address1.trim(), buyer_address2 ? buyer_address2.trim() : null,
     buyer_city.trim(), buyer_state.trim(), buyer_zip.trim(),
@@ -183,15 +330,11 @@ async function handleCreateOrder(request, env, petId) {
   ).run();
 
   await env.DB.prepare(
-    "UPDATE platform_addresses SET assigned_order_id=?, assigned_at=datetime('now') WHERE id=?"
-  ).bind(orderId, addrRow.id).run();
-
-  await env.DB.prepare(
     "UPDATE pets SET status='pending', updated_at=datetime('now') WHERE id=?"
   ).bind(petId).run();
 
   return json({
-    order: { id: orderId, pay_address: addrRow.address, amount_btc: amountBtc, expires_at: expiresAt, pet_name: pet.name }
+    order: { id: orderId, pay_address: derived.address, amount_btc: amountBtc, expires_at: expiresAt, pet_name: pet.name }
   }, 201);
 }
 
@@ -218,11 +361,11 @@ async function handleBtcPrice() {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
-async function handleAddressPool(request, env) {
+async function handleAddressIndex(request, env) {
   const row = await env.DB.prepare(
-    'SELECT COUNT(*) AS unassigned FROM platform_addresses WHERE assigned_order_id IS NULL'
+    "SELECT value FROM settings WHERE key='next_address_index'"
   ).first();
-  return json({ unassigned: row?.unassigned ?? 0 });
+  return json({ next_address_index: parseInt(row?.value ?? '0', 10) });
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
