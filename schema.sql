@@ -1,9 +1,12 @@
 -- Bitcoin Pets Marketplace - D1 Database Schema
--- All listings are imported from pbtmarketplace.com via the sync cron.
--- No user accounts or seller features — buyers check out anonymously.
+-- Listings are imported from pbtmarketplace.com via the sync cron.
+-- No user accounts; buyers check out with contact/shipping info only.
+-- BTC addresses are derived at order time from BTC_XPUB (Worker secret).
+--
+-- Safe to re-run: all statements use IF NOT EXISTS / INSERT OR IGNORE.
 
 -- Pets: listings imported from pbtmarketplace.com
-CREATE TABLE pets (
+CREATE TABLE IF NOT EXISTS pets (
   id TEXT PRIMARY KEY,
   pbt_id TEXT NOT NULL UNIQUE,                   -- pbtmarketplace.com listing ID (dedup key)
   pbt_url TEXT NOT NULL,                         -- full URL on PBT (used when purchasing from them)
@@ -29,7 +32,7 @@ CREATE TABLE pets (
 
 -- Pet pictures: one pet can have many photos; one is flagged as primary.
 -- url stores PBT S3 URLs directly (public CDN, no proxy needed).
-CREATE TABLE pet_pictures (
+CREATE TABLE IF NOT EXISTS pet_pictures (
   id TEXT PRIMARY KEY,
   pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
@@ -39,7 +42,7 @@ CREATE TABLE pet_pictures (
 
 -- Orders: buyer submits contact info and gets a Bitcoin invoice.
 -- The platform pays PBT and ships to the buyer upon payment confirmation.
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id          TEXT PRIMARY KEY,
   pet_id      TEXT NOT NULL REFERENCES pets(id),
   pay_address TEXT NOT NULL,
@@ -62,12 +65,10 @@ CREATE TABLE orders (
   buyer_country   TEXT NOT NULL DEFAULT 'US'
 );
 
--- Platform BTC addresses: pre-derived from xpub offline, loaded via derive-addresses.js.
--- One address is assigned per order so the cron can match incoming payments.
-CREATE TABLE platform_addresses (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  address           TEXT NOT NULL UNIQUE,
-  derivation_index  INTEGER NOT NULL,
-  assigned_order_id TEXT REFERENCES orders(id),
-  assigned_at       TEXT
+-- Key-value store for worker settings.
+-- next_address_index: monotonically increasing BIP32 derivation index for payment addresses.
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
 );
+INSERT OR IGNORE INTO settings (key, value) VALUES ('next_address_index', '0');
