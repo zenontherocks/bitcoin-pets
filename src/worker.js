@@ -366,45 +366,28 @@ async function handleBtcPrice() {
 
 async function handleSyncDebug(request, env) {
   const log = [];
-  const push = (msg) => log.push(msg);
-  const AUTH = 'RWX_BASIC A7M8jhhzlTAguDFZ0UtPZ2gbmCJ56u3NlqBbczSuvTo=';
+  const base = 'https://pbtmarketplace.com';
 
   async function probe(label, url, opts = {}) {
     try {
-      const r = await fetch(url, opts);
+      const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, ...opts });
       const text = await r.text();
-      push(`${label} → ${r.status} (${text.length} bytes): ${text.slice(0, 200)}`);
+      push(`${label} → ${r.status} (${text.length} bytes)`);
+      push(`  snippet: ${text.slice(0, 300)}`);
     } catch (e) {
       push(`${label} → ERROR: ${e.message}`);
     }
   }
 
-  const authHeaders = { Authorization: AUTH, Accept: 'application/json' };
-  const noAuthHeaders = { Accept: 'application/json' };
+  function push(msg) { log.push(msg); }
 
-  // Try with required-looking params that ASP.NET Web API might need
-  const base = 'https://pbtmarketplace.com';
-  await probe('Search no-auth', `${base}/api/Listing/Search`, { headers: noAuthHeaders });
-  await probe('Search+categoryId=1', `${base}/api/Listing/Search?categoryId=1`, { headers: authHeaders });
-  await probe('Search+categoryId=2', `${base}/api/Listing/Search?categoryId=2`, { headers: authHeaders });
-  await probe('Search+type=dog', `${base}/api/Listing/Search?type=dog`, { headers: authHeaders });
-  await probe('Search+animalType=1', `${base}/api/Listing/Search?animalType=1`, { headers: authHeaders });
-  await probe('Search+animalType=dog', `${base}/api/Listing/Search?animalType=dog`, { headers: authHeaders });
-  await probe('Search+PageSize=5', `${base}/api/Listing/Search?PageSize=5&PageIndex=0`, { headers: authHeaders });
-  // Try POST with JSON body
-  await probe('Search POST empty', `${base}/api/Listing/Search`, {
-    method: 'POST',
-    headers: { ...authHeaders, 'Content-Type': 'application/json' },
-    body: '{}',
-  });
-  await probe('Search POST with type', `${base}/api/Listing/Search`, {
-    method: 'POST',
-    headers: { ...authHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ animalType: 'dog', pageSize: 5, pageIndex: 0 }),
-  });
-  // Try a specific known listing ID via API
-  await probe('Listing/Get/1', `${base}/api/Listing/Get/1`, { headers: authHeaders });
-  await probe('Listing/1', `${base}/api/Listing/1`, { headers: authHeaders });
+  // Test public HTML browsing — no login
+  await probe('GET /Browse', `${base}/Browse`);
+  await probe('GET /Browse?species=dog', `${base}/Browse?species=dog`);
+  await probe('GET /Browse?animaltype=dog', `${base}/Browse?animaltype=dog`);
+
+  // Try to fetch a listing detail directly (guessing a recent ID)
+  await probe('GET /Listing/Details/100000/test', `${base}/Listing/Details/100000/test`);
 
   return json({ log });
 }
