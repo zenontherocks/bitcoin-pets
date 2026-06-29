@@ -214,6 +214,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
   }
+  if (url.pathname === '/api/admin/sync-debug' && request.method === 'GET') {
+    return handleSyncDebug(request, env);
+  }
 
   return json({ error: 'Not found' }, 404);
 }
@@ -360,6 +363,48 @@ async function handleBtcPrice() {
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
+
+async function handleSyncDebug(request, env) {
+  const log = [];
+  function push(msg) { log.push(msg); }
+
+  const cookie = await pbtLogin(env);
+  push(`login: ${cookie ? 'ok' : 'FAILED'}`);
+  if (!cookie) return json({ log });
+
+  // Get first listing from browse page
+  const listings = await pbtScrapeBrowse(cookie, 1);
+  push(`browse page 1: ${listings.length} unique listings`);
+  if (!listings.length) return json({ log });
+
+  const { id, slug } = listings[0];
+  push(`scraping detail: ${id} / ${slug}`);
+
+  const r = await fetch(`https://pbtmarketplace.com/Listing/Details/${id}/${slug}`, {
+    headers: { Cookie: cookie }
+  });
+  push(`detail → ${r.status}`);
+  const html = await r.text();
+  push(`detail page length: ${html.length}`);
+
+  // Check what our parsers find
+  const priceMatch = html.match(/data-price="([\d.]+)"/);
+  push(`data-price match: ${priceMatch ? priceMatch[1] : 'NOT FOUND'}`);
+
+  // Dump all text around price-related content
+  const priceIdx = html.toLowerCase().indexOf('price');
+  if (priceIdx >= 0) push(`context around "price": ${html.slice(Math.max(0, priceIdx - 50), priceIdx + 200)}`);
+
+  // Dump class attributes found on the page to check scraper class names
+  const classes = [...new Set([...html.matchAll(/class="([^"]+)"/g)].map(m => m[1]))];
+  push(`unique classes: ${classes.filter(c => c.includes('listing') || c.includes('price') || c.includes('detail')).join(', ')}`);
+
+  // Show a 500-char snippet of the main content area
+  const mainIdx = html.indexOf('listing-details');
+  if (mainIdx >= 0) push(`listing-details area: ${html.slice(mainIdx, mainIdx + 600)}`);
+
+  return json({ log });
+}
 
 async function handleAddressIndex(request, env) {
   const row = await env.DB.prepare(
