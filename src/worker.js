@@ -367,27 +367,17 @@ async function handleBtcPrice() {
 async function handleSyncDebug(request, env) {
   const log = [];
   const base = 'https://pbtmarketplace.com';
-  const ua = 'Mozilla/5.0';
+  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36';
 
   function push(msg) { log.push(msg); }
 
-  const r = await fetch(`${base}/Browse`, { headers: { 'User-Agent': ua } });
+  // GET the login page — dump full HTML and all headers
+  const r = await fetch(`${base}/Account/LogOn`, { headers: { 'User-Agent': ua } });
+  push(`GET /Account/LogOn → ${r.status}`);
+  push(`headers: ${JSON.stringify(Object.fromEntries(r.headers))}`);
   const html = await r.text();
-  push(`Browse page: ${html.length} bytes`);
-
-  // Extract all inline <script> blocks
-  const inlineScripts = [];
-  const re = /<script(?![^>]+src)[^>]*>([\s\S]*?)<\/script>/gi;
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    const s = m[1].trim();
-    if (s.length > 10) inlineScripts.push(s);
-  }
-  push(`inline script blocks: ${inlineScripts.length}`);
-  for (let i = 0; i < inlineScripts.length; i++) {
-    push(`--- block ${i} (${inlineScripts[i].length} chars) ---`);
-    push(inlineScripts[i].slice(0, 800));
-  }
+  push(`full HTML (${html.length} bytes):`);
+  push(html);
 
   return json({ log });
 }
