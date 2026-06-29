@@ -214,9 +214,6 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
   }
-  if (url.pathname === '/api/admin/sync-debug' && request.method === 'GET') {
-    return handleSyncDebug(request, env);
-  }
 
   return json({ error: 'Not found' }, 404);
 }
@@ -364,41 +361,6 @@ async function handleBtcPrice() {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
-async function handleSyncDebug(request, env) {
-  const log = [];
-  const base = 'https://pbtmarketplace.com';
-
-  function push(msg) { log.push(msg); }
-
-  if (!env.PBT_EMAIL || !env.PBT_PASSWORD) {
-    return json({ error: 'secrets not set', log });
-  }
-
-  // Test corrected login
-  const cookie = await pbtLogin(env);
-  push(`login: ${cookie ? 'SUCCESS — got auth cookie' : 'FAILED — no auth cookie'}`);
-  if (!cookie) return json({ error: 'login failed', log });
-
-  // Fetch Browse page with auth cookie
-  const r = await fetch(`${base}/Browse`, { headers: { Cookie: cookie } });
-  const html = await r.text();
-  push(`GET /Browse → ${r.status} (${html.length} bytes)`);
-
-  // Count listing links
-  const listingRe = /href="\/Listing\/Details\/(\d+)\/([^"]+)"/g;
-  const listings = [];
-  let m;
-  while ((m = listingRe.exec(html)) !== null) listings.push({ id: m[1], slug: m[2] });
-  push(`listing links found: ${listings.length}`);
-  if (listings.length) push(`first few: ${JSON.stringify(listings.slice(0, 3))}`);
-
-  // Show snippet of the page body to understand structure
-  const bodyStart = html.indexOf('<body');
-  push(`body snippet: ${html.slice(bodyStart, bodyStart + 600)}`);
-
-  return json({ log });
-}
-
 async function handleAddressIndex(request, env) {
   const row = await env.DB.prepare(
     "SELECT value FROM settings WHERE key='next_address_index'"
@@ -533,11 +495,12 @@ async function pbtScrapeBrowse(cookie, page) {
     const r = await fetch(url, { headers: { Cookie: cookie } });
     if (!r.ok) return [];
     const html = await r.text();
+    const seen = new Set();
     const listings = [];
     const re = /href="\/Listing\/Details\/(\d+)\/([^"]+)"/g;
     let m;
     while ((m = re.exec(html)) !== null) {
-      listings.push({ id: m[1], slug: m[2] });
+      if (!seen.has(m[1])) { seen.add(m[1]); listings.push({ id: m[1], slug: m[2] }); }
     }
     return listings;
   } catch { return []; }
