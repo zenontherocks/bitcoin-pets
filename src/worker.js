@@ -367,27 +367,38 @@ async function handleBtcPrice() {
 async function handleSyncDebug(request, env) {
   const log = [];
   const base = 'https://pbtmarketplace.com';
-
-  async function probe(label, url, opts = {}) {
-    try {
-      const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, ...opts });
-      const text = await r.text();
-      push(`${label} → ${r.status} (${text.length} bytes)`);
-      push(`  snippet: ${text.slice(0, 300)}`);
-    } catch (e) {
-      push(`${label} → ERROR: ${e.message}`);
-    }
-  }
+  const ua = 'Mozilla/5.0';
 
   function push(msg) { log.push(msg); }
 
-  // Test public HTML browsing — no login
-  await probe('GET /Browse', `${base}/Browse`);
-  await probe('GET /Browse?species=dog', `${base}/Browse?species=dog`);
-  await probe('GET /Browse?animaltype=dog', `${base}/Browse?animaltype=dog`);
+  // Fetch the shell page and extract all <script src=...> URLs
+  const shellR = await fetch(`${base}/Browse`, { headers: { 'User-Agent': ua } });
+  const shell = await shellR.text();
+  push(`shell page: ${shell.length} bytes`);
 
-  // Try to fetch a listing detail directly (guessing a recent ID)
-  await probe('GET /Listing/Details/100000/test', `${base}/Listing/Details/100000/test`);
+  const scriptUrls = [];
+  const re = /<script[^>]+src="([^"]+)"/g;
+  let m;
+  while ((m = re.exec(shell)) !== null) scriptUrls.push(m[1]);
+  push(`script tags found: ${scriptUrls.length}`);
+  for (const s of scriptUrls) push(`  script: ${s}`);
+
+  // Fetch each script and scan for API endpoint strings
+  for (const src of scriptUrls) {
+    const url = src.startsWith('http') ? src : `${base}/${src.replace(/^\//, '')}`;
+    try {
+      const r = await fetch(url, { headers: { 'User-Agent': ua } });
+      const js = await r.text();
+      push(`${src} → ${r.status} (${js.length} bytes)`);
+      // Extract anything that looks like an API path
+      const apiMatches = [...js.matchAll(/["'`](\/api\/[^"'`\s]{3,}["'`])/g)].map(x => x[1]);
+      const unique = [...new Set(apiMatches)].slice(0, 20);
+      if (unique.length) push(`  API paths: ${unique.join(', ')}`);
+      else push(`  no /api/ paths found`);
+    } catch (e) {
+      push(`${src} → ERROR: ${e.message}`);
+    }
+  }
 
   return json({ log });
 }
