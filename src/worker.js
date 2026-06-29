@@ -383,6 +383,98 @@ async function expireOrders(env) {
   }
 }
 
+// ── Email (Resend) ────────────────────────────────────────────────────────────
+
+async function sendEmail(env, { to, subject, html }) {
+  if (!env.RESEND_API_KEY) return;
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: env.RESEND_FROM || 'Bitcoin Pets <orders@bitcoin-pets.com>',
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+  } catch { /* email is best-effort; never block order processing */ }
+}
+
+async function sendOrderPaidEmails(env, orderId, txId) {
+  const order = await env.DB.prepare(
+    `SELECT o.*, p.name AS pet_name, p.breed, p.species, p.price_usd
+     FROM orders o JOIN pets p ON p.id = o.pet_id
+     WHERE o.id = ?`
+  ).bind(orderId).first();
+  if (!order) return;
+
+  const amountBtc = order.amount_btc.toFixed(8);
+  const addressLine = [order.buyer_address1, order.buyer_address2].filter(Boolean).join(', ');
+  const txLink = `https://mempool.space/tx/${txId}`;
+
+  const buyerHtml = `
+    <h2>Your Bitcoin Pets order is confirmed</h2>
+    <p>Thanks for your order, ${escapeHtml(order.buyer_name)}! Your payment has been confirmed on the Bitcoin blockchain.</p>
+    <h3>Order Summary</h3>
+    <ul>
+      <li><strong>Pet:</strong> ${escapeHtml(order.pet_name)} (${escapeHtml(order.breed || order.species)})</li>
+      <li><strong>Price:</strong> $${order.price_usd.toFixed(2)} USD (${amountBtc} BTC)</li>
+      <li><strong>Transaction:</strong> <a href="${txLink}">${txId}</a></li>
+    </ul>
+    <h3>Shipping To</h3>
+    <p>${escapeHtml(order.buyer_name)}<br>
+       ${escapeHtml(addressLine)}<br>
+       ${escapeHtml(order.buyer_city)}, ${escapeHtml(order.buyer_state)} ${escapeHtml(order.buyer_zip)}<br>
+       ${escapeHtml(order.buyer_country)}</p>
+    <p>We'll be in touch with delivery updates. Thanks for choosing Bitcoin Pets!</p>
+  `;
+
+  const adminHtml = `
+    <h2>New paid order</h2>
+    <h3>Pet</h3>
+    <ul>
+      <li><strong>Name:</strong> ${escapeHtml(order.pet_name)}</li>
+      <li><strong>Breed/Species:</strong> ${escapeHtml(order.breed || order.species)}</li>
+      <li><strong>Price:</strong> $${order.price_usd.toFixed(2)} USD (${amountBtc} BTC)</li>
+      <li><strong>Pet ID:</strong> ${escapeHtml(order.pet_id)}</li>
+    </ul>
+    <h3>Buyer</h3>
+    <ul>
+      <li><strong>Name:</strong> ${escapeHtml(order.buyer_name)}</li>
+      <li><strong>Email:</strong> ${escapeHtml(order.buyer_email)}</li>
+      <li><strong>Phone:</strong> ${escapeHtml(order.buyer_phone)}</li>
+      <li><strong>Address:</strong> ${escapeHtml(addressLine)}, ${escapeHtml(order.buyer_city)}, ${escapeHtml(order.buyer_state)} ${escapeHtml(order.buyer_zip)}, ${escapeHtml(order.buyer_country)}</li>
+    </ul>
+    <h3>Payment</h3>
+    <ul>
+      <li><strong>Order ID:</strong> ${escapeHtml(order.id)}</li>
+      <li><strong>Pay Address:</strong> ${escapeHtml(order.pay_address)}</li>
+      <li><strong>Transaction:</strong> <a href="${txLink}">${txId}</a></li>
+    </ul>
+  `;
+
+  await sendEmail(env, {
+    to: order.buyer_email,
+    subject: `Your Bitcoin Pets order is confirmed — ${order.pet_name}`,
+    html: buyerHtml,
+  });
+  await sendEmail(env, {
+    to: 'zenontherocks@gmail.com',
+    subject: `New paid order — ${order.pet_name} ($${order.price_usd.toFixed(2)})`,
+    html: adminHtml,
+  });
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
 // ── Cron: payment confirmation ────────────────────────────────────────────────
 
 async function confirmPayments(env) {
@@ -410,6 +502,7 @@ async function confirmPayments(env) {
           await env.DB.prepare(
             "UPDATE pets SET status='sold', updated_at=datetime('now') WHERE id=?"
           ).bind(order.pet_id).run();
+          await sendOrderPaidEmails(env, order.id, tx.txid);
           break;
         }
       }
