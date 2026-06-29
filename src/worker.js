@@ -371,34 +371,24 @@ async function handleSyncDebug(request, env) {
 
   function push(msg) { log.push(msg); }
 
-  // Fetch the shell page and extract all <script src=...> URLs
-  const shellR = await fetch(`${base}/Browse`, { headers: { 'User-Agent': ua } });
-  const shell = await shellR.text();
-  push(`shell page: ${shell.length} bytes`);
+  // Fetch pages.js and dump the full text so we can read it
+  const r = await fetch(`${base}/Content/new/js/pages.js`, { headers: { 'User-Agent': ua } });
+  const js = await r.text();
+  push(`pages.js: ${js.length} bytes`);
 
-  const scriptUrls = [];
-  const re = /<script[^>]+src="([^"]+)"/g;
-  let m;
-  while ((m = re.exec(shell)) !== null) scriptUrls.push(m[1]);
-  push(`script tags found: ${scriptUrls.length}`);
-  for (const s of scriptUrls) push(`  script: ${s}`);
-
-  // Fetch each script and scan for API endpoint strings
-  for (const src of scriptUrls) {
-    const url = src.startsWith('http') ? src : `${base}/${src.replace(/^\//, '')}`;
-    try {
-      const r = await fetch(url, { headers: { 'User-Agent': ua } });
-      const js = await r.text();
-      push(`${src} → ${r.status} (${js.length} bytes)`);
-      // Extract anything that looks like an API path
-      const apiMatches = [...js.matchAll(/["'`](\/api\/[^"'`\s]{3,}["'`])/g)].map(x => x[1]);
-      const unique = [...new Set(apiMatches)].slice(0, 20);
-      if (unique.length) push(`  API paths: ${unique.join(', ')}`);
-      else push(`  no /api/ paths found`);
-    } catch (e) {
-      push(`${src} → ERROR: ${e.message}`);
-    }
+  // Look for ajax/url patterns near DataTable initializations
+  const patterns = [
+    /ajax\s*[:=]\s*["'`]([^"'`]+)["'`]/g,
+    /url\s*[:=]\s*["'`](\/[^"'`\s]{2,})["'`]/g,
+    /"(\/[A-Z][a-zA-Z]+\/[A-Za-z]+[^"]{0,60})"/g,
+  ];
+  const found = new Set();
+  for (const pat of patterns) {
+    let m;
+    while ((m = pat.exec(js)) !== null) found.add(m[1]);
   }
+  push(`URL-like strings found: ${found.size}`);
+  for (const u of [...found].slice(0, 40)) push(`  ${u}`);
 
   return json({ log });
 }
