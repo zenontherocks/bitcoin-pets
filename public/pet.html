@@ -28,13 +28,7 @@
       min-height: 100vh;
     }
 
-    main {
-      flex: 1;
-      max-width: 1000px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 2rem 1rem 4rem;
-    }
+    main { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 2rem 1rem 4rem; }
 
     .back-link {
       display: inline-flex;
@@ -47,280 +41,170 @@
     }
     .back-link:hover { color: var(--dark); }
 
-    /* ── Two-column layout ── */
     .pet-layout {
       display: grid;
       grid-template-columns: 1fr 380px;
       gap: 2rem;
       align-items: start;
     }
+    @media (max-width: 720px) { .pet-layout { grid-template-columns: 1fr; } }
 
-    @media (max-width: 720px) {
-      .pet-layout { grid-template-columns: 1fr; }
-    }
-
-    /* ── Photo gallery ── */
     .gallery { display: flex; flex-direction: column; gap: 0.75rem; }
-
     .gallery-main {
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      object-fit: cover;
-      border-radius: var(--radius);
-      background: #e0e0e0;
-      display: block;
+      width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+      border-radius: var(--radius); background: #e0e0e0; display: block;
     }
-
     .gallery-placeholder {
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      background: #ebebeb;
-      border-radius: var(--radius);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 5rem;
-      color: #ccc;
+      width: 100%; aspect-ratio: 4 / 3; background: #ebebeb;
+      border-radius: var(--radius); display: flex; align-items: center;
+      justify-content: center; font-size: 5rem; color: #ccc;
     }
-
-    .gallery-thumbs {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
+    .gallery-thumbs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .thumb {
-      width: 70px;
-      height: 70px;
-      object-fit: cover;
-      border-radius: 6px;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: border-color 0.15s;
+      width: 70px; height: 70px; object-fit: cover; border-radius: 6px;
+      cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s;
     }
     .thumb.active, .thumb:hover { border-color: var(--orange); }
 
-    /* ── Details panel ── */
-    .details-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
+    .details-panel { display: flex; flex-direction: column; gap: 1.25rem; }
 
     .pet-title { font-size: 2rem; font-weight: 800; line-height: 1.1; }
     .pet-species-badge {
-      display: inline-block;
-      background: #f0f0f0;
-      border-radius: 999px;
-      padding: 0.25rem 0.75rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--gray);
-      text-transform: capitalize;
-      margin-top: 0.25rem;
+      display: inline-block; background: #f0f0f0; border-radius: 999px;
+      padding: 0.25rem 0.75rem; font-size: 0.8rem; font-weight: 600;
+      color: var(--gray); text-transform: capitalize; margin-top: 0.25rem;
     }
 
     .price-box {
-      background: #fffaf3;
-      border: 1.5px solid #f7c97a;
-      border-radius: var(--radius);
-      padding: 1rem 1.25rem;
+      background: #fffaf3; border: 1.5px solid #f7c97a;
+      border-radius: var(--radius); padding: 1rem 1.25rem;
     }
     .price-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); }
     .price-value { font-size: 2rem; font-weight: 800; color: var(--orange); margin-top: 0.1rem; }
     .price-secondary { font-size: 0.9rem; color: var(--gray); margin-top: 0.2rem; font-weight: 500; }
 
     .btn-buy {
-      width: 100%;
-      padding: 0.9rem;
-      background: var(--orange);
-      color: #fff;
-      font-size: 1rem;
-      font-weight: 700;
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: background 0.15s;
+      width: 100%; padding: 0.9rem; background: var(--orange); color: #fff;
+      font-size: 1rem; font-weight: 700; border: none; border-radius: var(--radius);
+      cursor: pointer; transition: background 0.15s;
     }
     .btn-buy:hover { background: var(--orange-dark); }
     .btn-buy:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .pending-expiry { font-size: 0.8rem; color: #d97b0e; margin-top: 0.4rem; font-weight: 600; }
-    .seller-line {
-      font-size: 0.875rem;
-      color: var(--gray);
-    }
-    .seller-line strong { color: var(--dark); }
 
-    /* ── Specs table ── */
     .specs {
-      background: var(--white);
-      border-radius: var(--radius);
-      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
-      overflow: hidden;
+      background: var(--white); border-radius: var(--radius);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07); overflow: hidden;
     }
-
     .specs-title {
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--gray);
-      padding: 0.75rem 1rem 0.5rem;
-      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--gray);
+      padding: 0.75rem 1rem 0.5rem; border-bottom: 1px solid var(--border);
     }
-
     .spec-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      padding: 0.6rem 1rem;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 0.875rem;
-      gap: 1rem;
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0.6rem 1rem; border-bottom: 1px solid #f0f0f0;
+      font-size: 0.875rem; gap: 1rem;
     }
     .spec-row:last-child { border-bottom: none; }
     .spec-label { color: var(--gray); flex-shrink: 0; }
     .spec-value { font-weight: 600; text-align: right; word-break: break-word; }
 
-    /* ── Description / health sections ── */
     .section {
-      background: var(--white);
-      border-radius: var(--radius);
-      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
-      padding: 1rem 1.25rem;
+      background: var(--white); border-radius: var(--radius);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07); padding: 1rem 1.25rem;
     }
     .section h2 {
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--gray);
-      margin-bottom: 0.6rem;
+      font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--gray); margin-bottom: 0.6rem;
     }
     .section p { font-size: 0.9rem; line-height: 1.6; color: #333; white-space: pre-wrap; }
 
-    /* ── Buy modal ── */
+    /* ── Modal ── */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.55);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 200;
+      align-items: center; justify-content: center; padding: 1rem;
     }
     .modal-overlay.open { display: flex; }
-
     .modal {
-      background: var(--white);
-      border-radius: 12px;
-      max-width: 460px;
-      width: 100%;
-      padding: 2rem;
-      position: relative;
+      background: var(--white); border-radius: 12px;
+      max-width: 500px; width: 100%; padding: 2rem; position: relative;
+      max-height: 90vh; overflow-y: auto;
     }
-
     .modal-close {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      font-size: 1.25rem;
-      cursor: pointer;
-      color: var(--gray);
-      line-height: 1;
+      position: absolute; top: 1rem; right: 1rem; background: none;
+      border: none; font-size: 1.25rem; cursor: pointer; color: var(--gray); line-height: 1;
     }
     .modal-close:hover { color: var(--dark); }
-
     .modal h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.4rem; }
     .modal .modal-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 1.25rem; }
 
+    /* Checkout form */
+    .checkout-form { display: flex; flex-direction: column; gap: 0.75rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+    .form-group label { font-size: 0.78rem; font-weight: 600; color: var(--gray); }
+    .form-group input, .form-group select {
+      padding: 0.55rem 0.75rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: 0.9rem; width: 100%;
+      transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: var(--orange);
+    }
+    .form-error { font-size: 0.8rem; color: #e53e3e; margin-top: 0.25rem; display: none; }
+    .btn-checkout {
+      padding: 0.85rem; background: var(--orange); color: #fff; border: none;
+      border-radius: var(--radius); font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s; margin-top: 0.25rem;
+    }
+    .btn-checkout:hover { background: var(--orange-dark); }
+    .btn-checkout:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Invoice view */
     .invoice-amount {
-      text-align: center;
-      font-size: 1.6rem;
-      font-weight: 900;
-      color: var(--orange);
-      margin-bottom: 1rem;
+      text-align: center; font-size: 1.6rem; font-weight: 900;
+      color: var(--orange); margin-bottom: 1rem;
     }
     .invoice-amount span { font-size: 1rem; color: var(--gray); font-weight: 600; }
-
     .qr-wrap { text-align: center; margin-bottom: 1rem; }
     .qr-wrap img { border-radius: 8px; border: 4px solid #f5f5f5; }
-
     .invoice-addr-box {
-      background: #f5f5f5;
-      border-radius: var(--radius);
-      padding: 0.75rem 1rem;
-      margin-bottom: 0.75rem;
+      background: #f5f5f5; border-radius: var(--radius);
+      padding: 0.75rem 1rem; margin-bottom: 0.75rem;
     }
     .invoice-addr-label { font-size: 0.72rem; color: var(--gray); margin-bottom: 0.25rem; }
-    .invoice-addr {
-      font-family: monospace;
-      font-size: 0.78rem;
-      word-break: break-all;
-      color: var(--dark);
-      font-weight: 600;
-    }
-
+    .invoice-addr { font-family: monospace; font-size: 0.78rem; word-break: break-all; color: var(--dark); font-weight: 600; }
     .copy-btn {
-      width: 100%;
-      padding: 0.6rem;
-      background: var(--dark);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s;
-      margin-bottom: 0.75rem;
+      width: 100%; padding: 0.6rem; background: var(--dark); color: #fff;
+      border: none; border-radius: var(--radius); font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s; margin-bottom: 0.75rem;
     }
     .copy-btn:hover { background: #333; }
-
     .wallet-link {
-      display: block;
-      width: 100%;
-      padding: 0.6rem;
-      background: transparent;
-      border: 1.5px solid var(--primary);
-      border-radius: var(--radius);
-      color: var(--primary);
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-align: center;
-      text-decoration: none;
-      box-sizing: border-box;
-      margin-bottom: 0.75rem;
-      transition: background 0.15s, color 0.15s;
+      display: block; width: 100%; padding: 0.6rem; background: transparent;
+      border: 1.5px solid var(--orange); border-radius: var(--radius); color: var(--orange);
+      font-size: 0.95rem; font-weight: 600; text-align: center; text-decoration: none;
+      margin-bottom: 0.75rem; transition: background 0.15s, color 0.15s;
     }
-    .wallet-link:hover { background: var(--primary); color: #fff; }
-
+    .wallet-link:hover { background: var(--orange); color: #fff; }
     .invoice-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; }
     .countdown { font-size: 0.8rem; color: var(--gray); }
     .countdown.urgent { color: #e53e3e; font-weight: 700; }
     .poll-status { font-size: 0.75rem; color: #aaa; }
+    .modal-note { font-size: 0.75rem; color: #bbb; text-align: center; line-height: 1.5; margin-top: 0.75rem; }
 
+    /* Success / error */
     .invoice-success { text-align: center; padding: 1.5rem 0.5rem; }
     .invoice-success .check { font-size: 3rem; margin-bottom: 0.75rem; }
-    .invoice-success h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: #38a169; }
+    .invoice-success h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--green); }
     .invoice-success p { font-size: 0.875rem; color: var(--gray); line-height: 1.6; }
     .invoice-success .tx-link { font-size: 0.78rem; word-break: break-all; color: var(--orange); text-decoration: none; }
     .invoice-success .tx-link:hover { text-decoration: underline; }
-
     .invoice-error { text-align: center; padding: 1rem 0; font-size: 0.875rem; color: #e53e3e; }
 
-    .modal-note {
-      font-size: 0.75rem;
-      color: #bbb;
-      text-align: center;
-      line-height: 1.5;
-      margin-top: 0.75rem;
-    }
-
-    /* ── State ── */
     .state-box { text-align: center; padding: 4rem 1rem; color: var(--gray); }
     .state-box a { color: var(--orange); text-decoration: none; font-weight: 600; }
 
@@ -337,13 +221,67 @@
     <div class="state-box" id="loadingState"><p>Loading&hellip;</p></div>
   </main>
 
-  <!-- Invoice modal -->
+  <!-- Buy modal: checkout form → invoice → success/error -->
   <div class="modal-overlay" id="buyModal">
     <div class="modal">
       <button class="modal-close" id="modalClose">&times;</button>
-      <div id="invoiceView">
+
+      <!-- Step 1: shipping / contact form -->
+      <div id="checkoutView">
         <h2>Complete Your Purchase</h2>
-        <p class="modal-sub">Scan the QR code or copy the address below and send the exact amount from your Bitcoin wallet.</p>
+        <p class="modal-sub">Enter your details below. We&rsquo;ll ship the pet to you after payment is confirmed.</p>
+        <div class="checkout-form" id="checkoutForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="buyer_name">Full Name *</label>
+              <input type="text" id="buyer_name" autocomplete="name" />
+            </div>
+            <div class="form-group">
+              <label for="buyer_phone">Phone *</label>
+              <input type="tel" id="buyer_phone" autocomplete="tel" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="buyer_email">Email *</label>
+            <input type="email" id="buyer_email" autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="buyer_address1">Address Line 1 *</label>
+            <input type="text" id="buyer_address1" autocomplete="address-line1" />
+          </div>
+          <div class="form-group">
+            <label for="buyer_address2">Address Line 2</label>
+            <input type="text" id="buyer_address2" autocomplete="address-line2" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="buyer_city">City *</label>
+              <input type="text" id="buyer_city" autocomplete="address-level2" />
+            </div>
+            <div class="form-group">
+              <label for="buyer_state">State *</label>
+              <input type="text" id="buyer_state" autocomplete="address-level1" maxlength="2" style="text-transform:uppercase" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="buyer_zip">ZIP Code *</label>
+              <input type="text" id="buyer_zip" autocomplete="postal-code" />
+            </div>
+            <div class="form-group">
+              <label for="buyer_country">Country *</label>
+              <input type="text" id="buyer_country" autocomplete="country-name" value="US" />
+            </div>
+          </div>
+          <div class="form-error" id="checkoutError"></div>
+          <button class="btn-checkout" id="checkoutBtn">Continue to Payment &rarr;</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Bitcoin invoice -->
+      <div id="invoiceView" style="display:none">
+        <h2>Send Bitcoin</h2>
+        <p class="modal-sub">Scan the QR code or copy the address and send the exact amount from your wallet.</p>
         <div class="invoice-amount" id="invoiceAmount"></div>
         <div class="qr-wrap"><img id="invoiceQR" src="" alt="Bitcoin QR code" width="200" height="200" /></div>
         <div class="invoice-addr-box">
@@ -358,14 +296,18 @@
         </div>
         <p class="modal-note">Payment is detected automatically after 1 on-chain confirmation (~10 min). This listing will close once paid.</p>
       </div>
+
+      <!-- Step 3: success -->
       <div id="successView" style="display:none">
         <div class="invoice-success">
           <div class="check">&#10003;</div>
           <h3>Payment Confirmed!</h3>
-          <p>Your payment was received and this listing has been closed. Contact the seller to arrange pickup or delivery.</p>
+          <p>Your payment was received. We will contact you at your provided email to arrange shipping of your pet.</p>
           <p id="txLinkWrap" style="margin-top:0.75rem"></p>
         </div>
       </div>
+
+      <!-- Error -->
       <div id="errorView" style="display:none">
         <div class="invoice-error" id="errorMsg"></div>
       </div>
@@ -381,24 +323,6 @@
 
   <script>
     let btcPriceUsd = null;
-
-    function primaryPriceStr(pet) {
-      if (pet.price_currency === 'usd' && pet.price_usd != null && btcPriceUsd) {
-        return formatSats(pet.price_usd / btcPriceUsd);
-      }
-      return formatSats(pet.price_btc);
-    }
-
-    function secondaryPriceStr(pet) {
-      if (pet.price_currency === 'usd' && pet.price_usd != null) {
-        return '\u2248 ' + formatUsd(pet.price_usd);
-      }
-      if (!btcPriceUsd) return '';
-      if (pet.price_btc != null) {
-        return '\u2248 ' + formatUsd(pet.price_btc * btcPriceUsd);
-      }
-      return '';
-    }
 
     function formatDate(str) {
       if (!str) return null;
@@ -421,17 +345,11 @@
     const params = new URLSearchParams(location.search);
     const petId  = params.get('id');
 
-    // Fetch BTC price; update secondary price display once loaded
     fetch('/api/btc-price').then(r => r.json()).then(d => {
       btcPriceUsd = d.usd || null;
       const secEl = document.getElementById('priceSecondary');
-      if (secEl && window._loadedPet && btcPriceUsd) {
-        secEl.textContent = secondaryPriceStr(window._loadedPet);
-      }
-      // For USD-anchored listings, recompute sats from live rate
-      const valEl = document.getElementById('priceValue');
-      if (valEl && window._loadedPet && window._loadedPet.price_currency === 'usd' && btcPriceUsd) {
-        valEl.textContent = primaryPriceStr(window._loadedPet);
+      if (secEl && btcPriceUsd && window._petPriceUsd) {
+        secEl.textContent = '≈ ' + formatSats(window._petPriceUsd / btcPriceUsd);
       }
     }).catch(() => {});
 
@@ -456,19 +374,18 @@
       }
 
       const { pet, photos } = data;
-      window._loadedPet = pet;
-      document.title = escHtml(pet.name) + ' \u2014 Bitcoin-Pets.com';
+      window._petPriceUsd = pet.price_usd;
+      document.title = escHtml(pet.name) + ' — Bitcoin-Pets.com';
 
       const primaryPhoto = photos.find(p => p.is_primary) || photos[0];
 
-      // Build gallery
       let galleryHtml = '';
       if (primaryPhoto) {
         galleryHtml += `<img class="gallery-main" id="mainImg" src="${escHtml(primaryPhoto.url)}" alt="${escHtml(pet.name)}" />`;
         if (photos.length > 1) {
           galleryHtml += '<div class="gallery-thumbs">';
           photos.forEach((p, i) => {
-            galleryHtml += `<img class="thumb${i === 0 ? ' active' : ''}" src="${escHtml(p.url)}" alt="Photo ${i+1}" data-idx="${i}" />`;
+            galleryHtml += `<img class="thumb${i === 0 ? ' active' : ''}" src="${escHtml(p.url)}" alt="Photo ${i+1}" />`;
           });
           galleryHtml += '</div>';
         }
@@ -476,24 +393,24 @@
         galleryHtml += `<div class="gallery-placeholder">${SPECIES_ICON[pet.species] || '&#128062;'}</div>`;
       }
 
-      // Build specs
       const specs = [
-        ['Species',    pet.species ? pet.species.charAt(0).toUpperCase() + pet.species.slice(1) : null],
-        ['Breed',      pet.breed],
-        ['Gender',     pet.gender ? pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1) : null],
-        ['Age',        ageFromDob(pet.date_of_birth)],
-        ['Color',      pet.color],
-        ['Weight',     pet.weight_lbs ? pet.weight_lbs + ' lbs' : null],
-        ['Microchip',  pet.microchip_id],
-        ['Registry',   pet.registry_name && pet.registry_number ? pet.registry_name + ' #' + pet.registry_number : (pet.registry_name || null)],
-        ['Listed',     formatDate(pet.created_at)],
+        ['Species',   pet.species ? pet.species.charAt(0).toUpperCase() + pet.species.slice(1) : null],
+        ['Breed',     pet.breed],
+        ['Gender',    pet.gender ? pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1) : null],
+        ['Age',       ageFromDob(pet.date_of_birth)],
+        ['Color',     pet.color],
+        ['Weight',    pet.weight_lbs ? pet.weight_lbs + ' lbs' : null],
+        ['Microchip', pet.microchip_id],
+        ['Registry',  pet.registry_name && pet.registry_number
+                        ? pet.registry_name + ' #' + pet.registry_number
+                        : (pet.registry_name || null)],
+        ['Listed',    formatDate(pet.created_at)],
       ].filter(([, v]) => v);
 
-      let specsHtml = specs.map(([label, value]) =>
+      const specsHtml = specs.map(([label, value]) =>
         `<div class="spec-row"><span class="spec-label">${escHtml(label)}</span><span class="spec-value">${escHtml(value)}</span></div>`
       ).join('');
 
-      // Status badge
       let statusColor, statusLabel;
       if (pet.status === 'available') {
         statusColor = '#38a169'; statusLabel = '&#10003; Available';
@@ -502,6 +419,10 @@
       } else {
         statusColor = '#aaa'; statusLabel = 'Sold';
       }
+
+      const satsSub = btcPriceUsd
+        ? '≈ ' + formatSats(pet.price_usd / btcPriceUsd)
+        : '';
 
       main.innerHTML = `
         <a href="/browse" class="back-link">&#8592; Back to Browse</a>
@@ -512,36 +433,29 @@
             ${pet.health_info ? `<div class="section" style="margin-top:1rem"><h2>Health Information</h2><p>${escHtml(pet.health_info)}</p></div>` : ''}
             ${pet.vaccinations ? `<div class="section" style="margin-top:1rem"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
           </div>
-
           <div class="details-panel">
             <div>
               <div class="pet-title">${escHtml(pet.name)}</div>
-              <span class="pet-species-badge" style="background:#f0f0f0">${escHtml(pet.species || '')}</span>
+              <span class="pet-species-badge">${escHtml(pet.species || '')}</span>
               &nbsp;
-              <span class="pet-species-badge" style="background:${statusColor}22; color:${statusColor}">${statusLabel}</span>
+              <span class="pet-species-badge" style="background:${statusColor}22;color:${statusColor}">${statusLabel}</span>
             </div>
             ${data.order_expires_at && pet.status === 'pending' ? `<div class="pending-expiry" id="pendingExpiry"></div>` : ''}
-
             <div class="price-box">
-              <div class="price-label">Asking Price</div>
-              <div class="price-value" id="priceValue">${escHtml(primaryPriceStr(pet))}</div>
-              <div class="price-secondary" id="priceSecondary">${escHtml(secondaryPriceStr(pet))}</div>
+              <div class="price-label">Price</div>
+              <div class="price-value">${escHtml(formatUsd(pet.price_usd))}</div>
+              <div class="price-secondary" id="priceSecondary">${escHtml(satsSub)}</div>
             </div>
-
             ${pet.status === 'available'
               ? `<button class="btn-buy" id="buyBtn">Buy with Bitcoin</button>`
               : pet.status === 'pending'
                 ? `<button class="btn-buy" disabled>Purchase in Progress</button>`
                 : `<button class="btn-buy" disabled>Sold</button>`}
-
-            <div class="seller-line">Listed by <strong>${escHtml(pet.seller)}</strong></div>
-
             ${specsHtml.length ? `<div class="specs"><div class="specs-title">Details</div>${specsHtml}</div>` : ''}
           </div>
         </div>
       `;
 
-      // Thumb switching
       document.querySelectorAll('.thumb').forEach(thumb => {
         thumb.addEventListener('click', () => {
           document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
@@ -550,16 +464,11 @@
         });
       });
 
-      // Pending expiry countdown on listing page
       if (data.order_expires_at && pet.status === 'pending') {
         const expiryEl = document.getElementById('pendingExpiry');
         function tickExpiry() {
           const secs = Math.max(0, Math.floor((new Date(data.order_expires_at) - Date.now()) / 1000));
-          if (secs === 0) {
-            expiryEl.textContent = 'Pending order has expired — refreshing…';
-            setTimeout(() => location.reload(), 2000);
-            return;
-          }
+          if (secs === 0) { expiryEl.textContent = 'Pending order expired — refreshing…'; setTimeout(() => location.reload(), 2000); return; }
           const m = String(Math.floor(secs / 60)).padStart(2, '0');
           const s = String(secs % 60).padStart(2, '0');
           expiryEl.textContent = `A buyer has ${m}:${s} left to complete payment.`;
@@ -568,17 +477,20 @@
         setInterval(tickExpiry, 1000);
       }
 
-      // Buy button — create invoice
       const buyBtn = document.getElementById('buyBtn');
-      if (buyBtn) {
-        buyBtn.addEventListener('click', () => openInvoice(pet));
-      }
+      if (buyBtn) buyBtn.addEventListener('click', () => openModal(pet));
     }
 
-    // ── Invoice flow ──────────────────────────────────────────────────────────
+    // ── Modal flow ────────────────────────────────────────────────────────────
 
     let countdownInterval = null;
     let pollInterval = null;
+
+    function showView(name) {
+      ['checkoutView', 'invoiceView', 'successView', 'errorView'].forEach(id => {
+        document.getElementById(id).style.display = id === name ? '' : 'none';
+      });
+    }
 
     function closeModal() {
       document.getElementById('buyModal').classList.remove('open');
@@ -586,11 +498,79 @@
       clearInterval(pollInterval);
     }
 
-    function showView(name) {
-      ['invoiceView', 'successView', 'errorView'].forEach(id => {
-        document.getElementById(id).style.display = id === name ? '' : 'none';
-      });
+    function openModal(pet) {
+      showView('checkoutView');
+      document.getElementById('checkoutError').style.display = 'none';
+      document.getElementById('buyModal').classList.add('open');
     }
+
+    document.getElementById('checkoutBtn').addEventListener('click', async () => {
+      const get = id => document.getElementById(id).value.trim();
+      const buyer_name     = get('buyer_name');
+      const buyer_email    = get('buyer_email');
+      const buyer_phone    = get('buyer_phone');
+      const buyer_address1 = get('buyer_address1');
+      const buyer_address2 = get('buyer_address2');
+      const buyer_city     = get('buyer_city');
+      const buyer_state    = get('buyer_state').toUpperCase();
+      const buyer_zip      = get('buyer_zip');
+      const buyer_country  = get('buyer_country') || 'US';
+
+      const errEl = document.getElementById('checkoutError');
+      if (!buyer_name || !buyer_email || !buyer_phone || !buyer_address1 || !buyer_city || !buyer_state || !buyer_zip) {
+        errEl.textContent = 'Please fill in all required fields.';
+        errEl.style.display = '';
+        return;
+      }
+
+      const btn = document.getElementById('checkoutBtn');
+      btn.disabled = true;
+      btn.textContent = 'Creating invoice…';
+      errEl.style.display = 'none';
+
+      let order;
+      try {
+        const res = await fetch(`/api/pets/${petId}/order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buyer_name, buyer_email, buyer_phone, buyer_address1, buyer_address2, buyer_city, buyer_state, buyer_zip, buyer_country }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errEl.textContent = data.error || 'Could not create invoice. Please try again.';
+          errEl.style.display = '';
+          btn.disabled = false;
+          btn.textContent = 'Continue to Payment →';
+          return;
+        }
+        order = data.order;
+      } catch {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = 'Continue to Payment →';
+        return;
+      }
+
+      showView('invoiceView');
+
+      const sats = Math.round(order.amount_btc * 1e8).toLocaleString('en-US');
+      document.getElementById('invoiceAmount').innerHTML =
+        `${escHtml(formatBtc(order.amount_btc))} <span>${escHtml(sats)} sats</span>`;
+      document.getElementById('invoiceAddr').textContent = order.pay_address;
+
+      const bip21 = `bitcoin:${order.pay_address}?amount=${order.amount_btc}&label=Bitcoin+Pets`;
+      document.getElementById('invoiceQR').src =
+        `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(bip21)}&size=200x200&margin=10`;
+      document.getElementById('walletLink').href = bip21;
+      document.getElementById('pollStatus').textContent = 'Checking for payment…';
+
+      startCountdown(order.expires_at);
+      startPolling(order.id);
+
+      btn.disabled = false;
+      btn.textContent = 'Continue to Payment →';
+    });
 
     function startCountdown(expiresAt) {
       const el = document.getElementById('countdown');
@@ -620,12 +600,10 @@
             clearInterval(pollInterval);
             clearInterval(countdownInterval);
             showView('successView');
-            // Show mempool link
             if (order.tx_id) {
               document.getElementById('txLinkWrap').innerHTML =
-                `<a class="tx-link" href="https://mempool.space/tx/${order.tx_id}" target="_blank" rel="noopener">View transaction on mempool.space</a>`;
+                `<a class="tx-link" href="https://mempool.space/tx/${escHtml(order.tx_id)}" target="_blank" rel="noopener">View transaction on mempool.space</a>`;
             }
-            // Disable buy button on the page
             const btn = document.getElementById('buyBtn');
             if (btn) { btn.disabled = true; btn.textContent = 'Sold'; }
           } else if (order.status === 'expired') {
@@ -634,65 +612,17 @@
             document.getElementById('countdown').textContent = 'Invoice expired';
             document.getElementById('pollStatus').textContent = 'Close and click Buy to try again.';
           }
-        } catch { /* silent — will retry */ }
+        } catch { /* silent retry */ }
       }
       check();
       pollInterval = setInterval(check, 30000);
     }
 
-    async function openInvoice(pet) {
-      clearInterval(countdownInterval);
-      clearInterval(pollInterval);
-      showView('invoiceView');
-      // Show the primary price label (BTC or USD), always paid in sats
-      const priceDisplay = pet.price_currency === 'usd' && pet.price_usd != null
-        ? `${formatUsd(pet.price_usd)} <span>USD &mdash; paid in sats at current rate</span>`
-        : `${formatBtc(pet.price_btc)} <span>BTC</span>`;
-      document.getElementById('invoiceAmount').innerHTML = priceDisplay;
-      document.getElementById('invoiceAddr').textContent = '';
-      document.getElementById('invoiceQR').src = '';
-      document.getElementById('countdown').textContent = '';
-      document.getElementById('pollStatus').textContent = 'Creating invoice…';
-      document.getElementById('buyModal').classList.add('open');
-
-      let order;
-      try {
-        const res = await fetch(`/api/pets/${pet.id}/order`, { method: 'POST' });
-        const data = await res.json();
-        if (!res.ok) {
-          showView('errorView');
-          document.getElementById('errorMsg').textContent = data.error || 'Could not create invoice.';
-          return;
-        }
-        order = data.order;
-      } catch {
-        showView('errorView');
-        document.getElementById('errorMsg').textContent = 'Network error. Please try again.';
-        return;
-      }
-
-      const bip21 = `bitcoin:${order.pay_address}?amount=${order.amount_btc}&label=Bitcoin+Pets`;
-      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(bip21)}&size=200x200&margin=10`;
-      document.getElementById('invoiceQR').src = qrSrc;
-      document.getElementById('invoiceAddr').textContent = order.pay_address;
-      document.getElementById('walletLink').href = bip21;
-      document.getElementById('pollStatus').textContent = 'Checking for payment\u2026';
-      // Update amount display to show exact sats amount from invoice
-      const sats = Math.round(order.amount_btc * 1e8).toLocaleString('en-US');
-      document.getElementById('invoiceAmount').innerHTML =
-        `${formatBtc(order.amount_btc)} <span>${sats} sats</span>`;
-
-      startCountdown(order.expires_at);
-      startPolling(order.id);
-    }
-
-    // Modal close
     document.getElementById('modalClose').addEventListener('click', closeModal);
-    document.getElementById('buyModal').addEventListener('click', (e) => {
+    document.getElementById('buyModal').addEventListener('click', e => {
       if (e.target === document.getElementById('buyModal')) closeModal();
     });
 
-    // Copy address
     document.getElementById('copyBtn').addEventListener('click', () => {
       const addr = document.getElementById('invoiceAddr').textContent;
       if (addr) {
@@ -703,8 +633,6 @@
         });
       }
     });
-
-    // Nav auth
 
     load();
   </script>
