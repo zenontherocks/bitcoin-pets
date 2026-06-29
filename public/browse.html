@@ -34,28 +34,12 @@
       align-items: baseline;
       justify-content: space-between;
       gap: 1rem;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.75rem;
       flex-wrap: wrap;
     }
 
     h1 { font-size: 1.75rem; font-weight: 800; }
     .listing-count { font-size: 0.9rem; color: var(--gray); }
-
-    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
-
-    .filter-btn {
-      padding: 0.4rem 1rem;
-      border: 1.5px solid var(--border);
-      border-radius: 999px;
-      background: var(--white);
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      color: var(--gray);
-      transition: border-color 0.15s, background 0.15s, color 0.15s;
-    }
-    .filter-btn:hover { border-color: var(--orange); color: var(--dark); }
-    .filter-btn.active { background: var(--orange); border-color: var(--orange); color: #fff; }
 
     .pet-grid {
       display: grid;
@@ -71,6 +55,8 @@
       transition: transform 0.15s, box-shadow 0.15s;
       display: flex;
       flex-direction: column;
+      text-decoration: none;
+      color: inherit;
     }
     .pet-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
 
@@ -92,12 +78,9 @@
     .pet-meta { font-size: 0.82rem; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pet-price { margin-top: auto; padding-top: 0.6rem; font-size: 0.95rem; font-weight: 700; color: var(--orange); }
     .pet-price-sub { font-size: 0.75rem; color: #888; font-weight: 500; margin-top: 0.1rem; }
-    .pet-seller { font-size: 0.78rem; color: #aaa; margin-top: 0.1rem; }
 
     .state-box { text-align: center; padding: 4rem 1rem; color: var(--gray); }
     .state-box p { font-size: 1rem; }
-    .state-box a { color: var(--orange); text-decoration: none; font-weight: 600; }
-    .state-box a:hover { text-decoration: underline; }
 
     .load-more-wrap { text-align: center; margin-top: 2rem; }
     .btn-load-more {
@@ -121,7 +104,6 @@
     @media (max-width: 480px) {
       .pet-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
     }
-
   </style>
   <script src="/navbar.js"></script>
   <script src="/shared.js"></script>
@@ -132,18 +114,6 @@
     <div class="page-header">
       <h1>Browse Pets</h1>
       <span class="listing-count" id="listingCount"></span>
-    </div>
-
-    <div class="filters" id="filters">
-      <button class="filter-btn active" data-species="">All</button>
-      <button class="filter-btn" data-species="dog">Dogs</button>
-      <button class="filter-btn" data-species="cat">Cats</button>
-      <button class="filter-btn" data-species="bird">Birds</button>
-      <button class="filter-btn" data-species="reptile">Reptiles</button>
-      <button class="filter-btn" data-species="small animal">Small Animals</button>
-      <button class="filter-btn" data-species="fish">Fish</button>
-      <button class="filter-btn" data-species="horse">Horses</button>
-      <button class="filter-btn" data-species="other">Other</button>
     </div>
 
     <div id="petGrid" class="pet-grid"></div>
@@ -170,48 +140,20 @@
     const loadMoreWrap = document.getElementById('loadMoreWrap');
     const loadMoreBtn  = document.getElementById('loadMoreBtn');
 
-    let currentSpecies = '';
-    let currentPage    = 1;
-    let totalShown     = 0;
-    let loading        = false;
-    let btcPriceUsd    = null;
+    let currentPage = 1;
+    let totalShown  = 0;
+    let loading     = false;
+    let btcPriceUsd = null;
 
     fetch('/api/btc-price').then(r => r.json()).then(d => {
       btcPriceUsd = d.usd || null;
-      // Update any already-rendered cards
-      document.querySelectorAll('[data-price-sub]').forEach(el => {
-        const btc = parseFloat(el.dataset.priceBtc);
+      document.querySelectorAll('[data-price-usd]').forEach(el => {
         const usd = parseFloat(el.dataset.priceUsd);
-        const cur = el.dataset.priceCurrency;
-        el.textContent = buildSubPrice(btc, usd, cur);
-        // For USD-anchored listings, recompute sats from live rate
-        if (cur === 'usd' && !isNaN(usd) && btcPriceUsd) {
-          el.previousElementSibling.textContent = formatSats(usd / btcPriceUsd);
+        if (btcPriceUsd && !isNaN(usd)) {
+          el.textContent = '≈ ' + formatSats(usd / btcPriceUsd);
         }
       });
     }).catch(() => {});
-
-    function speciesLabel(s) {
-      return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-    }
-
-    function primaryPrice(pet) {
-      if (pet.price_currency === 'usd' && pet.price_usd != null && btcPriceUsd) {
-        return formatSats(pet.price_usd / btcPriceUsd);
-      }
-      return formatSats(pet.price_btc);
-    }
-
-    function buildSubPrice(btc, usd, currency) {
-      if (currency === 'usd' && usd != null && !isNaN(usd)) {
-        return '\u2248 ' + formatUsd(usd);
-      }
-      // BTC-anchored — show USD equivalent
-      if (btcPriceUsd && btcPriceUsd > 0 && !isNaN(btc)) {
-        return '\u2248 ' + formatUsd(btc * btcPriceUsd);
-      }
-      return '';
-    }
 
     function makePlaceholder(species) {
       const el = document.createElement('div');
@@ -224,8 +166,6 @@
       const card = document.createElement('a');
       card.className = 'pet-card';
       card.href = '/pet?id=' + encodeURIComponent(pet.id);
-      card.style.textDecoration = 'none';
-      card.style.color = 'inherit';
 
       if (pet.photo_url) {
         const img = document.createElement('img');
@@ -239,26 +179,24 @@
         card.appendChild(makePlaceholder(pet.species));
       }
 
-      const meta = [speciesLabel(pet.species), pet.breed].filter(Boolean).join(' \u00b7 ');
+      const meta = [
+        pet.species ? pet.species.charAt(0).toUpperCase() + pet.species.slice(1) : '',
+        pet.breed
+      ].filter(Boolean).join(' · ');
 
-      const subPrice = buildSubPrice(pet.price_btc, pet.price_usd, pet.price_currency);
+      const subText = btcPriceUsd && pet.price_usd
+        ? '≈ ' + formatSats(pet.price_usd / btcPriceUsd)
+        : '';
 
       const info = document.createElement('div');
       info.className = 'pet-info';
       info.innerHTML = `
         <div class="pet-name">${escHtml(pet.name)}</div>
         <div class="pet-meta">${escHtml(meta)}</div>
-        <div class="pet-price">${escHtml(primaryPrice(pet))}</div>
-        <div class="pet-price-sub"
-          data-price-sub
-          data-price-btc="${escHtml(String(pet.price_btc))}"
-          data-price-usd="${escHtml(String(pet.price_usd ?? ''))}"
-          data-price-currency="${escHtml(pet.price_currency || 'btc')}"
-        >${subPrice}</div>
-        <div class="pet-seller">Listed by ${escHtml(pet.seller)}</div>
+        <div class="pet-price">${escHtml(formatUsd(pet.price_usd))}</div>
+        <div class="pet-price-sub" data-price-usd="${escHtml(String(pet.price_usd || ''))}">${escHtml(subText)}</div>
       `;
       card.appendChild(info);
-
       return card;
     }
 
@@ -277,8 +215,6 @@
 
       try {
         const params = new URLSearchParams({ page: currentPage });
-        if (currentSpecies) params.set('species', currentSpecies);
-
         const res  = await fetch('/api/pets?' + params);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load');
@@ -287,7 +223,7 @@
         totalShown += pets.length;
 
         if (pets.length === 0 && !append) {
-          stateBox.innerHTML = '<p>No listings yet. <a href="/sell">Be the first to list a pet!</a></p>';
+          stateBox.innerHTML = '<p>No listings available right now. Check back soon!</p>';
           stateBox.style.display = '';
         } else {
           pets.forEach(pet => grid.appendChild(renderCard(pet)));
@@ -313,17 +249,7 @@
       }
     }
 
-    document.getElementById('filters').addEventListener('click', (e) => {
-      const btn = e.target.closest('.filter-btn');
-      if (!btn) return;
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentSpecies = btn.dataset.species;
-      loadPets();
-    });
-
     loadMoreBtn.addEventListener('click', () => loadPets(true));
-
     loadPets();
   </script>
 

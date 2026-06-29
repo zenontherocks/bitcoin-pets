@@ -1,70 +1,45 @@
 -- Bitcoin Pets Marketplace - D1 Database Schema
--- Database: bitcoin-pets (ID: 20b9a4ee-5b6c-4aea-bb78-709b63df26e9)
+-- All listings are imported from pbtmarketplace.com via the sync cron.
+-- No user accounts or seller features — buyers check out anonymously.
 
--- Users: buyers and sellers on the platform
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
-  email TEXT NOT NULL UNIQUE,
-  phone TEXT,
-  address_line1 TEXT,
-  address_line2 TEXT,
-  city TEXT,
-  state TEXT,
-  zip_code TEXT,
-  country TEXT DEFAULT 'US',
-  password_hash TEXT NOT NULL,
-  bitcoin_address TEXT,                          -- for receiving payment
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Pets: listings for sale, linked back to their owner
+-- Pets: listings imported from pbtmarketplace.com
 CREATE TABLE pets (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  pbt_id TEXT NOT NULL UNIQUE,                   -- pbtmarketplace.com listing ID (dedup key)
+  pbt_url TEXT NOT NULL,                         -- full URL on PBT (used when purchasing from them)
   name TEXT NOT NULL,
-  species TEXT NOT NULL,                         -- e.g. dog, cat, bird, reptile
+  species TEXT NOT NULL,                         -- 'dog', 'cat', etc. (derived from PBT category)
   breed TEXT,
-  date_of_birth TEXT,                            -- ISO 8601 date string
+  date_of_birth TEXT,                            -- ISO 8601, computed from PBT age string at sync time
   weight_lbs REAL,
   gender TEXT CHECK(gender IN ('male', 'female', 'unknown')),
   color TEXT,
-  description TEXT,                              -- free-form seller description
-  health_info TEXT,                              -- vet records, conditions, notes
-  vaccinations TEXT,                             -- vaccination history / status
-  registry_name TEXT,                            -- e.g. AKC, CFA, TICA
+  description TEXT,
+  health_info TEXT,
+  vaccinations TEXT,                             -- formatted text from PBT vaccine records
+  registry_name TEXT,
   registry_number TEXT,
   microchip_id TEXT,
-  price_btc REAL,
-  price_usd REAL,                                -- asking price in USD (if seller chose USD anchor)
-  price_currency TEXT NOT NULL DEFAULT 'btc'
-    CHECK(price_currency IN ('btc', 'usd')),     -- which currency the price is anchored to
-  bitcoin_address TEXT,                          -- per-listing receive address (overrides user default)                                -- asking price in BTC
+  price_usd REAL NOT NULL,                       -- always USD (PBT buy-now price)
   status TEXT NOT NULL DEFAULT 'available'
     CHECK(status IN ('available', 'pending', 'sold', 'ended')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Pet pictures: one pet can have many photos; one is flagged as primary
+-- Pet pictures: one pet can have many photos; one is flagged as primary.
+-- url stores PBT S3 URLs directly (public CDN, no proxy needed).
 CREATE TABLE pet_pictures (
   id TEXT PRIMARY KEY,
   pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
-  is_primary INTEGER NOT NULL DEFAULT 0,         -- 1 = primary/thumbnail image
+  is_primary INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Sessions: server-side login sessions (30-day expiry)
-CREATE TABLE sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS orders (
+-- Orders: buyer submits contact info and gets a Bitcoin invoice.
+-- The platform pays PBT and ships to the buyer upon payment confirmation.
+CREATE TABLE orders (
   id          TEXT PRIMARY KEY,
   pet_id      TEXT NOT NULL REFERENCES pets(id),
   pay_address TEXT NOT NULL,
@@ -74,5 +49,25 @@ CREATE TABLE IF NOT EXISTS orders (
   tx_id       TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at  TEXT NOT NULL,
-  paid_at     TEXT
+  paid_at     TEXT,
+  -- Buyer contact and shipping info (collected at checkout, no account required)
+  buyer_name      TEXT NOT NULL,
+  buyer_email     TEXT NOT NULL,
+  buyer_phone     TEXT NOT NULL,
+  buyer_address1  TEXT NOT NULL,
+  buyer_address2  TEXT,
+  buyer_city      TEXT NOT NULL,
+  buyer_state     TEXT NOT NULL,
+  buyer_zip       TEXT NOT NULL,
+  buyer_country   TEXT NOT NULL DEFAULT 'US'
+);
+
+-- Platform BTC addresses: pre-derived from xpub offline, loaded via derive-addresses.js.
+-- One address is assigned per order so the cron can match incoming payments.
+CREATE TABLE platform_addresses (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  address           TEXT NOT NULL UNIQUE,
+  derivation_index  INTEGER NOT NULL,
+  assigned_order_id TEXT REFERENCES orders(id),
+  assigned_at       TEXT
 );
