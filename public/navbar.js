@@ -11,6 +11,7 @@
     '.nav-currency-toggle{display:flex;align-items:center;gap:0;background:#2e2e2e;border-radius:8px;overflow:hidden;margin-left:0.5rem;}',
     '.nav-currency-toggle button{background:none;border:none;color:#aaa;font-size:0.8rem;font-weight:700;padding:0.35rem 0.65rem;cursor:pointer;transition:background 0.15s,color 0.15s;font-family:inherit;}',
     '.nav-currency-toggle button.active{background:#f7931a;color:#fff;}',
+    '.nav-btc-rate{font-size:0.68rem;color:#555;white-space:nowrap;margin-left:0.5rem;line-height:1;}',
     '.nav-toggle{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:0.4rem;background:none;border:none;}',
     '.nav-toggle span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}',
     '@media(max-width:640px){',
@@ -50,7 +51,8 @@
         '<li><div class="nav-currency-toggle">' +
           '<button data-currency="usd">USD</button>' +
           '<button data-currency="btc">BTC</button>' +
-        '</div></li>' +
+        '</div>' +
+        '<span class="nav-btc-rate" id="navBtcRate"></span></li>' +
       '</ul>';
     document.body.insertAdjacentElement('afterbegin', nav);
 
@@ -58,5 +60,12 @@
       b.classList.toggle('active', b.dataset.currency === window.BP_CURRENCY);
       b.addEventListener('click', () => setCurrency(b.dataset.currency));
     });
+
+    fetch('/api/btc-price').then(r => r.json()).then(d => {
+      if (d.usd) {
+        const el = document.getElementById('navBtcRate');
+        if (el) el.textContent = '$' + Math.round(d.usd).toLocaleString();
+      }
+    }).catch(() => {});
   });
 }());
