@@ -347,11 +347,26 @@
 
     fetch('/api/btc-price').then(r => r.json()).then(d => {
       btcPriceUsd = d.usd || null;
-      const secEl = document.getElementById('priceSecondary');
-      if (secEl && btcPriceUsd && window._petPriceUsd) {
-        secEl.textContent = '≈ ' + formatSats(window._petPriceUsd / btcPriceUsd);
-      }
+      refreshPrice();
     }).catch(() => {});
+
+    function refreshPrice() {
+      const priceUsd = window._petPriceUsd;
+      if (!priceUsd) return;
+      const showBtc = window.BP_CURRENCY === 'btc';
+      const primary = document.getElementById('priceValue');
+      const secondary = document.getElementById('priceSecondary');
+      if (!primary || !secondary) return;
+      if (showBtc && btcPriceUsd) {
+        primary.textContent = '≈ ' + formatSats(priceUsd / btcPriceUsd);
+        secondary.textContent = formatUsd(priceUsd);
+      } else {
+        primary.textContent = formatUsd(priceUsd);
+        secondary.textContent = btcPriceUsd ? '≈ ' + formatSats(priceUsd / btcPriceUsd) : '';
+      }
+    }
+
+    window.addEventListener('bp:currency', refreshPrice);
 
     async function load() {
       const main = document.getElementById('main');
@@ -374,7 +389,6 @@
       }
 
       const { pet, photos } = data;
-      window._petPriceUsd = pet.price_usd;
       document.title = escHtml(pet.name) + ' — Bitcoin-Pets.com';
 
       const primaryPhoto = photos.find(p => p.is_primary) || photos[0];
@@ -418,9 +432,7 @@
         statusColor = '#aaa'; statusLabel = 'Sold';
       }
 
-      const satsSub = btcPriceUsd
-        ? '≈ ' + formatSats(pet.price_usd / btcPriceUsd)
-        : '';
+      window._petPriceUsd = pet.price_usd;
 
       main.innerHTML = `
         <a href="/browse" class="back-link">&#8592; Back to Browse</a>
@@ -439,8 +451,8 @@
             ${data.order_expires_at && pet.status === 'pending' ? `<div class="pending-expiry" id="pendingExpiry"></div>` : ''}
             <div class="price-box">
               <div class="price-label">Price</div>
-              <div class="price-value">${escHtml(formatUsd(pet.price_usd))}</div>
-              <div class="price-secondary" id="priceSecondary">${escHtml(satsSub)}</div>
+              <div class="price-value" id="priceValue"></div>
+              <div class="price-secondary" id="priceSecondary"></div>
             </div>
             ${pet.status === 'available'
               ? `<button class="btn-buy" id="buyBtn">Buy with Bitcoin</button>`
@@ -472,6 +484,8 @@
         tickExpiry();
         setInterval(tickExpiry, 1000);
       }
+
+      refreshPrice();
 
       const buyBtn = document.getElementById('buyBtn');
       if (buyBtn) buyBtn.addEventListener('click', () => openModal(pet));
