@@ -533,8 +533,8 @@ async function syncPbtListings(env) {
     for (const l of pageListings) {
       if (!seen.has(l.id)) { seen.add(l.id); listings.push(l); }
     }
-    // PBT browse page shows ~20 listings; stop after 50 pages to avoid runaway
-    if (pageListings.length < 10 || page >= 50) break;
+    // Stop when we hit an empty page (past the last page) or a safety cap
+    if (page >= 100) break;
     page++;
   }
 
