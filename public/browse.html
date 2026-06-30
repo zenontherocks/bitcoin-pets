@@ -194,16 +194,16 @@
         card.appendChild(makePlaceholder(pet.species));
       }
 
-      const meta = [
-        pet.species ? pet.species.charAt(0).toUpperCase() + pet.species.slice(1) : '',
+      const label = [
+        pet.gender ? pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1) : '',
         pet.breed
-      ].filter(Boolean).join(' · ');
+      ].filter(Boolean).join(' ');
 
       const info = document.createElement('div');
       info.className = 'pet-info';
       info.innerHTML = `
-        <div class="pet-name">${escHtml(pet.name)}</div>
-        <div class="pet-meta">${escHtml(meta)}</div>
+        <div class="pet-name">${escHtml(label)}</div>
+        <div class="pet-meta"></div>
         <div class="pet-price"></div>
         <div class="pet-price-sub"></div>
       `;
