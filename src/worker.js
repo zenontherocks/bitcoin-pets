@@ -553,8 +553,13 @@ async function syncPbtListings(env) {
     }
   }
 
-  // Upsert each listing
+  // Fetch existing pbt_ids so we only scrape detail pages for new listings
+  const existingRows = await env.DB.prepare('SELECT pbt_id FROM pets').all();
+  const existingIds = new Set((existingRows.results || []).map(r => r.pbt_id));
+
+  // Only hit detail pages for listings not already in the DB
   for (const { id, slug } of listings) {
+    if (existingIds.has(id)) continue;
     try {
       const detail = await pbtScrapeDetail(cookie, id, slug);
       if (!detail) continue;
