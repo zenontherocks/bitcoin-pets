@@ -147,13 +147,27 @@
 
     fetch('/api/btc-price').then(r => r.json()).then(d => {
       btcPriceUsd = d.usd || null;
-      document.querySelectorAll('[data-price-usd]').forEach(el => {
-        const usd = parseFloat(el.dataset.priceUsd);
-        if (btcPriceUsd && !isNaN(usd)) {
-          el.textContent = '≈ ' + formatSats(usd / btcPriceUsd);
+      refreshPriceDisplay();
+    }).catch(() => {});
+
+    function refreshPriceDisplay() {
+      const showBtc = window.BP_CURRENCY === 'btc';
+      document.querySelectorAll('.pet-card').forEach(card => {
+        const usd = parseFloat(card.dataset.priceUsd || '0');
+        const primary = card.querySelector('.pet-price');
+        const sub = card.querySelector('.pet-price-sub');
+        if (!primary || !sub) return;
+        if (showBtc && btcPriceUsd && usd) {
+          primary.textContent = '≈ ' + formatSats(usd / btcPriceUsd);
+          sub.textContent = formatUsd(usd);
+        } else {
+          primary.textContent = formatUsd(usd);
+          sub.textContent = (btcPriceUsd && usd) ? '≈ ' + formatSats(usd / btcPriceUsd) : '';
         }
       });
-    }).catch(() => {});
+    }
+
+    window.addEventListener('bp:currency', refreshPriceDisplay);
 
     function makePlaceholder(species) {
       const el = document.createElement('div');
@@ -166,6 +180,7 @@
       const card = document.createElement('a');
       card.className = 'pet-card';
       card.href = '/pet?id=' + encodeURIComponent(pet.id);
+      card.dataset.priceUsd = pet.price_usd || '';
 
       if (pet.photo_url) {
         const img = document.createElement('img');
@@ -184,17 +199,13 @@
         pet.breed
       ].filter(Boolean).join(' · ');
 
-      const subText = btcPriceUsd && pet.price_usd
-        ? '≈ ' + formatSats(pet.price_usd / btcPriceUsd)
-        : '';
-
       const info = document.createElement('div');
       info.className = 'pet-info';
       info.innerHTML = `
         <div class="pet-name">${escHtml(pet.name)}</div>
         <div class="pet-meta">${escHtml(meta)}</div>
-        <div class="pet-price">${escHtml(formatUsd(pet.price_usd))}</div>
-        <div class="pet-price-sub" data-price-usd="${escHtml(String(pet.price_usd || ''))}">${escHtml(subText)}</div>
+        <div class="pet-price"></div>
+        <div class="pet-price-sub"></div>
       `;
       card.appendChild(info);
       return card;
@@ -227,6 +238,7 @@
           stateBox.style.display = '';
         } else {
           pets.forEach(pet => grid.appendChild(renderCard(pet)));
+          refreshPriceDisplay();
           countEl.textContent =
             totalShown + (data.hasMore ? '+' : '') +
             ' listing' + (totalShown === 1 ? '' : 's');
