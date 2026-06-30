@@ -22,6 +22,8 @@
     '  .nav-links.open{display:flex;}',
     '  .nav-links li{width:100%;}',
     '  .nav-links a{display:block;padding:0.75rem 0.5rem;font-size:1rem;}',
+    '  .nav-currency-toggle{max-width:120px;margin:0.5rem 0.5rem 0;}',
+    '  .nav-btc-rate{margin-left:0.75rem;display:block;padding-bottom:0.5rem;}',
     '}',
   ].join('\n');
   document.head.appendChild(style);
