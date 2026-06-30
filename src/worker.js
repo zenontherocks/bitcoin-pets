@@ -219,9 +219,11 @@ async function handleApi(request, env, url) {
     if (!cookie) return json({ error: 'login failed' });
     const r = await fetch('https://pbtmarketplace.com/Browse', { headers: { Cookie: cookie } });
     const html = await r.text();
-    // Find the first listing card and dump 1000 chars of surrounding HTML
-    const idx = html.indexOf('/Listing/Details/');
-    return json({ snippet: html.slice(Math.max(0, idx - 200), idx + 800) });
+    // Dump 1500 chars around the first listing link so we can see the card structure + price
+    // Find first listing row div (contains full card including price)
+    const rowIdx = html.indexOf('listing-item-row');
+    const card = rowIdx >= 0 ? html.slice(rowIdx, rowIdx + 3000) : html.slice(0, 3000);
+    return json({ card });
   }
 
   return json({ error: 'Not found' }, 404);
@@ -566,9 +568,18 @@ async function syncPbtListings(env) {
   const existingRows = await env.DB.prepare('SELECT pbt_id FROM pets').all();
   const existingIds = new Set((existingRows.results || []).map(r => r.pbt_id));
 
-  // Only hit detail pages for listings not already in the DB
-  for (const { id, slug } of listings) {
-    if (existingIds.has(id)) continue;
+  for (const { id, slug, price_usd } of listings) {
+    if (existingIds.has(id)) {
+      // Already in DB — update price from browse page if we got one
+      if (price_usd && price_usd > 0) {
+        try {
+          await env.DB.prepare(
+            "UPDATE pets SET price_usd=?, status='available', updated_at=datetime('now') WHERE pbt_id=?"
+          ).bind(price_usd, id).run();
+        } catch { /* ignore */ }
+      }
+      continue;
+    }
     try {
       const detail = await pbtScrapeDetail(cookie, id, slug);
       if (!detail) continue;
@@ -612,7 +623,20 @@ async function pbtScrapeBrowse(cookie, page) {
     const re = /href="\/Listing\/Details\/(\d+)\/([^"]+)"/g;
     let m;
     while ((m = re.exec(html)) !== null) {
-      if (!seen.has(m[1])) { seen.add(m[1]); listings.push({ id: m[1], slug: m[2] }); }
+      if (seen.has(m[1])) continue;
+      seen.add(m[1]);
+      // Try to extract price from the card HTML following this listing link
+      const cardHtml = html.slice(m.index, m.index + 1200);
+      // Prefer data-price attribute, fall back to $ amount text
+      const dataPriceM = cardHtml.match(/data-price="([\d.]+)"/);
+      const dollarM    = cardHtml.match(/\$([\d,]+(?:\.\d{1,2})?)/);
+      let price_usd = null;
+      if (dataPriceM) {
+        price_usd = parseFloat(dataPriceM[1]);
+      } else if (dollarM) {
+        price_usd = parseFloat(dollarM[1].replace(/,/g, ''));
+      }
+      listings.push({ id: m[1], slug: m[2], price_usd: price_usd && price_usd > 0 ? price_usd : null });
     }
     return listings;
   } catch { return []; }
