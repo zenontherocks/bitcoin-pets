@@ -220,6 +220,8 @@ async function handleApi(request, env, url) {
 
 // ── Pet handlers ──────────────────────────────────────────────────────────────
 
+const PRICE_MARKUP_USD = 1000; // added to every PBT price to cover shipping/expenses
+
 async function handleListPets(request, env, url) {
   const species = url.searchParams.get('species') || '';
   const page    = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
@@ -241,7 +243,7 @@ async function handleListPets(request, env, url) {
     LIMIT ? OFFSET ?
   `).bind(...binds).all();
 
-  const pets = rows.results || [];
+  const pets = (rows.results || []).map(p => ({ ...p, price_usd: p.price_usd + PRICE_MARKUP_USD }));
   const hasMore = pets.length > limit;
   return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page });
 }
@@ -264,7 +266,7 @@ async function handleGetPet(request, env, id) {
       : Promise.resolve(null),
   ]);
 
-  return json({ pet, photos: pics.results || [], order_expires_at: activeOrder?.expires_at ?? null });
+  return json({ pet: { ...pet, price_usd: pet.price_usd + PRICE_MARKUP_USD }, photos: pics.results || [], order_expires_at: activeOrder?.expires_at ?? null });
 }
 
 // ── Orders & Payments ─────────────────────────────────────────────────────────
@@ -300,7 +302,7 @@ async function handleCreateOrder(request, env, petId) {
     if (!priceRes.ok) throw new Error('price fetch failed');
     const { USD } = await priceRes.json();
     if (!USD || USD <= 0) throw new Error('bad price');
-    amountBtc = Math.round((pet.price_usd / USD) * 1e8) / 1e8;
+    amountBtc = Math.round(((pet.price_usd + PRICE_MARKUP_USD) / USD) * 1e8) / 1e8;
   } catch {
     return json({ error: 'Could not fetch current BTC price. Please try again.' }, 502);
   }
