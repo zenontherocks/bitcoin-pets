@@ -214,6 +214,15 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
   }
+  if (url.pathname === '/api/admin/browse-html' && request.method === 'GET') {
+    const cookie = await pbtLogin(env);
+    if (!cookie) return json({ error: 'login failed' });
+    const r = await fetch('https://pbtmarketplace.com/Browse', { headers: { Cookie: cookie } });
+    const html = await r.text();
+    // Find the first listing card and dump 1000 chars of surrounding HTML
+    const idx = html.indexOf('/Listing/Details/');
+    return json({ snippet: html.slice(Math.max(0, idx - 200), idx + 800) });
+  }
 
   return json({ error: 'Not found' }, 404);
 }
