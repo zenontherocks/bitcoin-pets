@@ -463,6 +463,7 @@
                 ? `<button class="btn-buy" disabled>Purchase in Progress</button>`
                 : `<button class="btn-buy" disabled>Sold</button>`}
             ${specsHtml.length ? `<div class="specs"><div class="specs-title">Details</div>${specsHtml}</div>` : ''}
+            ${pet.pbt_id ? `<div style="font-size:0.75rem;color:#aaa;margin-top:0.5rem">PBT ID: ${escHtml(pet.pbt_id)}</div>` : ''}
           </div>
         </div>
       `;
