@@ -214,24 +214,24 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
   }
-  if (url.pathname === '/api/admin/browse-html' && request.method === 'GET') {
-    const cookie = await pbtLogin(env);
-    if (!cookie) return json({ error: 'login failed' });
-    const r = await fetch('https://pbtmarketplace.com/Browse', { headers: { Cookie: cookie } });
-    const html = await r.text();
-    // Dump 1500 chars around the first listing link so we can see the card structure + price
-    // Find first listing row div (contains full card including price)
-    const rowIdx = html.indexOf('listing-item-row');
-    const card = rowIdx >= 0 ? html.slice(rowIdx, rowIdx + 3000) : html.slice(0, 3000);
-    return json({ card });
-  }
-
   return json({ error: 'Not found' }, 404);
 }
 
 // ── Pet handlers ──────────────────────────────────────────────────────────────
 
-const PRICE_MARKUP_USD = 1000; // added to every PBT price to cover shipping/expenses
+const MARKUP_SATS = 1_000_000; // 1M sats added per listing to cover shipping/expenses
+
+async function fetchBtcUsd() {
+  const res = await fetch('https://mempool.space/api/v1/prices');
+  if (!res.ok) throw new Error('price fetch failed');
+  const { USD } = await res.json();
+  if (!USD || USD <= 0) throw new Error('bad price');
+  return USD;
+}
+
+function applyMarkup(price_usd, btcUsd) {
+  return price_usd + (MARKUP_SATS / 1e8) * btcUsd;
+}
 
 async function handleListPets(request, env, url) {
   const species = url.searchParams.get('species') || '';
@@ -254,7 +254,9 @@ async function handleListPets(request, env, url) {
     LIMIT ? OFFSET ?
   `).bind(...binds).all();
 
-  const pets = (rows.results || []).map(p => ({ ...p, price_usd: p.price_usd + PRICE_MARKUP_USD }));
+  let btcUsd = 0;
+  try { btcUsd = await fetchBtcUsd(); } catch { /* show base price if fetch fails */ }
+  const pets = (rows.results || []).map(p => ({ ...p, price_usd: btcUsd ? applyMarkup(p.price_usd, btcUsd) : p.price_usd }));
   const hasMore = pets.length > limit;
   return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page });
 }
@@ -277,7 +279,10 @@ async function handleGetPet(request, env, id) {
       : Promise.resolve(null),
   ]);
 
-  return json({ pet: { ...pet, price_usd: pet.price_usd + PRICE_MARKUP_USD }, photos: pics.results || [], order_expires_at: activeOrder?.expires_at ?? null });
+  let btcUsd = 0;
+  try { btcUsd = await fetchBtcUsd(); } catch { /* show base price if fetch fails */ }
+  const displayPet = btcUsd ? { ...pet, price_usd: applyMarkup(pet.price_usd, btcUsd) } : pet;
+  return json({ pet: displayPet, photos: pics.results || [], order_expires_at: activeOrder?.expires_at ?? null });
 }
 
 // ── Orders & Payments ─────────────────────────────────────────────────────────
@@ -306,14 +311,12 @@ async function handleCreateOrder(request, env, petId) {
     return json({ error: 'Invalid email address' }, 400);
   }
 
-  // Compute BTC amount from USD price at current market rate
+  // Compute BTC amount: convert base USD to sats, then add 1M sats markup
   let amountBtc;
   try {
-    const priceRes = await fetch('https://mempool.space/api/v1/prices');
-    if (!priceRes.ok) throw new Error('price fetch failed');
-    const { USD } = await priceRes.json();
-    if (!USD || USD <= 0) throw new Error('bad price');
-    amountBtc = Math.round(((pet.price_usd + PRICE_MARKUP_USD) / USD) * 1e8) / 1e8;
+    const USD = await fetchBtcUsd();
+    const baseSats = Math.round((pet.price_usd / USD) * 1e8);
+    amountBtc = (baseSats + MARKUP_SATS) / 1e8;
   } catch {
     return json({ error: 'Could not fetch current BTC price. Please try again.' }, 502);
   }
@@ -363,10 +366,8 @@ async function handleGetOrder(request, env, orderId) {
 
 async function handleBtcPrice() {
   try {
-    const res = await fetch('https://mempool.space/api/v1/prices');
-    if (!res.ok) throw new Error('fetch failed');
-    const data = await res.json();
-    return json({ usd: data.USD });
+    const usd = await fetchBtcUsd();
+    return json({ usd });
   } catch {
     return json({ error: 'Could not fetch BTC price' }, 502);
   }
@@ -625,17 +626,10 @@ async function pbtScrapeBrowse(cookie, page) {
     while ((m = re.exec(html)) !== null) {
       if (seen.has(m[1])) continue;
       seen.add(m[1]);
-      // Try to extract price from the card HTML following this listing link
+      // Extract price from card HTML; price lives in <span class="NumberPart">700.00</span>
       const cardHtml = html.slice(m.index, m.index + 1200);
-      // Prefer data-price attribute, fall back to $ amount text
-      const dataPriceM = cardHtml.match(/data-price="([\d.]+)"/);
-      const dollarM    = cardHtml.match(/\$([\d,]+(?:\.\d{1,2})?)/);
-      let price_usd = null;
-      if (dataPriceM) {
-        price_usd = parseFloat(dataPriceM[1]);
-      } else if (dollarM) {
-        price_usd = parseFloat(dollarM[1].replace(/,/g, ''));
-      }
+      const priceM = cardHtml.match(/class="NumberPart">([\d,]+(?:\.\d{1,2})?)</);
+      const price_usd = priceM ? parseFloat(priceM[1].replace(/,/g, '')) : null;
       listings.push({ id: m[1], slug: m[2], price_usd: price_usd && price_usd > 0 ? price_usd : null });
     }
     return listings;
