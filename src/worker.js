@@ -388,19 +388,21 @@ async function expireOrders(env) {
 // ── Email (Resend) ────────────────────────────────────────────────────────────
 
 async function sendEmail(env, { to, subject, html }) {
-  if (!env.RESEND_API_KEY) return;
+  if (!env.BREVO_API_KEY) return;
+  const senderEmail = env.BREVO_SENDER_EMAIL || 'orders@bitcoin-pets.com';
+  const senderName  = env.BREVO_SENDER_NAME  || 'Bitcoin Pets';
   try {
-    await fetch('https://api.resend.com/emails', {
+    await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'api-key': env.BREVO_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: env.RESEND_FROM || 'Bitcoin Pets <orders@bitcoin-pets.com>',
-        to: [to],
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: to }],
         subject,
-        html,
+        htmlContent: html,
       }),
     });
   } catch { /* email is best-effort; never block order processing */ }
