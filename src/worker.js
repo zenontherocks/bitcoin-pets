@@ -214,9 +214,6 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
   }
-  if (url.pathname === '/api/admin/sync-debug' && request.method === 'GET') {
-    return handleSyncDebug(request, env);
-  }
 
   return json({ error: 'Not found' }, 404);
 }
@@ -363,48 +360,6 @@ async function handleBtcPrice() {
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
-
-async function handleSyncDebug(request, env) {
-  const log = [];
-  function push(msg) { log.push(msg); }
-
-  const cookie = await pbtLogin(env);
-  push(`login: ${cookie ? 'ok' : 'FAILED'}`);
-  if (!cookie) return json({ log });
-
-  const listings = await pbtScrapeBrowse(cookie, 1);
-  push(`browse page 1: ${listings.length} unique listings`);
-  if (!listings.length) return json({ log });
-
-  const { id, slug } = listings[0];
-  push(`scraping detail: ${id} / ${slug}`);
-
-  let detail;
-  try {
-    detail = await pbtScrapeDetail(cookie, id, slug);
-    push(`pbtScrapeDetail result: ${JSON.stringify(detail)}`);
-  } catch (e) {
-    push(`pbtScrapeDetail threw: ${e.message}`);
-    return json({ log });
-  }
-
-  if (!detail) {
-    push('detail returned null — price likely missing');
-    return json({ log });
-  }
-
-  try {
-    await syncPbtListings_upsert(env, detail);
-    push('upsert: SUCCESS');
-  } catch (e) {
-    push(`upsert threw: ${e.message}`);
-  }
-
-  const count = await env.DB.prepare('SELECT COUNT(*) as n FROM pets').first();
-  push(`pets in DB after upsert: ${count?.n}`);
-
-  return json({ log });
-}
 
 async function handleAddressIndex(request, env) {
   const row = await env.DB.prepare(
