@@ -27,7 +27,7 @@
   document.head.appendChild(style);
 
   // Currency preference stored in localStorage; default USD
-  window.BP_CURRENCY = localStorage.getItem('bp_currency') || 'usd';
+  window.BP_CURRENCY = localStorage.getItem('bp_currency') || 'btc';
 
   function setCurrency(c) {
     window.BP_CURRENCY = c;
