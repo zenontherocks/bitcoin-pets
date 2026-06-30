@@ -214,6 +214,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
   }
+  if (url.pathname === '/api/admin/test-email' && request.method === 'GET') {
+    return handleTestEmail(request, env);
+  }
 
   return json({ error: 'Not found' }, 404);
 }
@@ -362,6 +365,19 @@ async function handleBtcPrice() {
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
+
+async function handleTestEmail(request, env) {
+  try {
+    await sendEmail(env, {
+      to: 'zenontherocks@gmail.com',
+      subject: 'Bitcoin Pets — email test',
+      html: '<h2>Email is working!</h2><p>Brevo is configured correctly on Bitcoin Pets. You can remove the test endpoint now.</p>',
+    });
+    return json({ ok: true, message: 'Email sent to zenontherocks@gmail.com' });
+  } catch (e) {
+    return json({ ok: false, error: e.message }, 500);
+  }
+}
 
 async function handleAddressIndex(request, env) {
   const row = await env.DB.prepare(
