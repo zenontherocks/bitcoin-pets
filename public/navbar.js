@@ -9,7 +9,7 @@
     '.nav-links a{color:#ccc;text-decoration:none;font-size:0.9rem;padding:0.4rem 0.75rem;border-radius:8px;transition:color 0.15s,background 0.15s;}',
     '.nav-links a:hover{color:#fff;background:#2e2e2e;}',
     '.nav-currency-toggle{display:flex;align-items:center;gap:0;background:#2e2e2e;border-radius:8px;overflow:hidden;margin-left:0.5rem;}',
-    '.nav-currency-toggle button{background:none;border:none;color:#aaa;font-size:0.8rem;font-weight:700;padding:0.35rem 0.65rem;cursor:pointer;transition:background 0.15s,color 0.15s;font-family:inherit;}',
+    '.nav-currency-toggle button{background:none;border:none;color:#aaa;font-size:0.8rem;font-weight:700;padding:0.35rem 0;width:3rem;text-align:center;cursor:pointer;transition:background 0.15s,color 0.15s;font-family:inherit;}',
     '.nav-currency-toggle button.active{background:#f7931a;color:#fff;}',
     '.nav-btc-rate{font-size:0.68rem;color:#555;white-space:nowrap;margin-left:0.5rem;line-height:1;}',
     '.nav-toggle{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:0.4rem;background:none;border:none;}',
