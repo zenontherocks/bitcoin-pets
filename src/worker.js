@@ -220,12 +220,10 @@ async function handleApi(request, env, url) {
     const r = await fetch('https://pbtmarketplace.com/Browse', { headers: { Cookie: cookie } });
     const html = await r.text();
     // Dump 1500 chars around the first listing link so we can see the card structure + price
-    const idx = html.indexOf('/Listing/Details/');
-    const card = html.slice(Math.max(0, idx - 500), idx + 1000);
-    // Also look for price-related patterns
-    const priceIdx = html.search(/\$[\d,]+|\bdata-price\b|\bprice\b/i);
-    const priceCtx = priceIdx >= 0 ? html.slice(Math.max(0, priceIdx - 100), priceIdx + 400) : null;
-    return json({ card, priceCtx });
+    // Find first listing row div (contains full card including price)
+    const rowIdx = html.indexOf('listing-item-row');
+    const card = rowIdx >= 0 ? html.slice(rowIdx, rowIdx + 3000) : html.slice(0, 3000);
+    return json({ card });
   }
 
   return json({ error: 'Not found' }, 404);
