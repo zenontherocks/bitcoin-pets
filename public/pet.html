@@ -394,7 +394,6 @@
       }
 
       const specs = [
-        ['Species',   pet.species ? pet.species.charAt(0).toUpperCase() + pet.species.slice(1) : null],
         ['Breed',     pet.breed],
         ['Gender',    pet.gender ? pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1) : null],
         ['Age',       ageFromDob(pet.date_of_birth)],
@@ -404,7 +403,6 @@
         ['Registry',  pet.registry_name && pet.registry_number
                         ? pet.registry_name + ' #' + pet.registry_number
                         : (pet.registry_name || null)],
-        ['Listed',    formatDate(pet.created_at)],
       ].filter(([, v]) => v);
 
       const specsHtml = specs.map(([label, value]) =>
@@ -436,8 +434,6 @@
           <div class="details-panel">
             <div>
               <div class="pet-title">${escHtml(pet.name)}</div>
-              <span class="pet-species-badge">${escHtml(pet.species || '')}</span>
-              &nbsp;
               <span class="pet-species-badge" style="background:${statusColor}22;color:${statusColor}">${statusLabel}</span>
             </div>
             ${data.order_expires_at && pet.status === 'pending' ? `<div class="pending-expiry" id="pendingExpiry"></div>` : ''}
