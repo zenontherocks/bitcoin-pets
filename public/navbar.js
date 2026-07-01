@@ -14,6 +14,8 @@
     '.nav-btc-rate{font-size:0.68rem;color:#555;white-space:nowrap;margin-left:0.5rem;line-height:1;}',
     '.nav-toggle{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:0.4rem;background:none;border:none;}',
     '.nav-toggle span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}',
+    '.nav-theme-toggle{background:#2e2e2e;border:none;color:#fff;font-size:0.95rem;line-height:1;padding:0.45rem 0.6rem;border-radius:8px;cursor:pointer;margin-left:0.5rem;transition:background 0.15s;font-family:inherit;}',
+    '.nav-theme-toggle:hover{background:#3a3a3a;}',
     '@media(max-width:640px){',
     '  .nav-tagline{display:none;}',
     '  nav{height:auto!important;min-height:56px;position:relative;padding:0 1rem;}',
@@ -24,12 +26,18 @@
     '  .nav-links a{display:block;padding:0.75rem 0.5rem;font-size:1rem;}',
     '  .nav-currency-toggle{max-width:120px;margin:0.5rem 0.5rem 0;}',
     '  .nav-btc-rate{margin-left:0.75rem;display:block;padding-bottom:0.5rem;}',
+    '  .nav-theme-toggle{margin:0.5rem 0.5rem 0;}',
     '}',
   ].join('\n');
   document.head.appendChild(style);
 
   // Currency preference stored in localStorage; default USD
   window.BP_CURRENCY = localStorage.getItem('bp_currency') || 'btc';
+
+  // Theme preference stored in localStorage; applied immediately (before
+  // DOMContentLoaded) so the page never flashes the light theme first.
+  window.BP_THEME = localStorage.getItem('bp_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', window.BP_THEME);
 
   function setCurrency(c) {
     window.BP_CURRENCY = c;
@@ -38,6 +46,17 @@
       b.classList.toggle('active', b.dataset.currency === c);
     });
     window.dispatchEvent(new CustomEvent('bp:currency', { detail: c }));
+  }
+
+  function setTheme(t) {
+    window.BP_THEME = t;
+    localStorage.setItem('bp_theme', t);
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelectorAll('.nav-theme-toggle').forEach(b => {
+      b.textContent = t === 'dark' ? '☀️' : '🌙';
+      b.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    });
+    window.dispatchEvent(new CustomEvent('bp:theme', { detail: t }));
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -56,6 +75,7 @@
           '<button data-currency="btc">BTC</button>' +
         '</div>' +
         '<span class="nav-btc-rate" id="navBtcRate"></span></li>' +
+        '<li><button class="nav-theme-toggle" id="navThemeToggle" type="button"></button></li>' +
       '</ul>';
     document.body.insertAdjacentElement('afterbegin', nav);
 
@@ -63,6 +83,11 @@
       b.classList.toggle('active', b.dataset.currency === window.BP_CURRENCY);
       b.addEventListener('click', () => setCurrency(b.dataset.currency));
     });
+
+    const themeBtn = nav.querySelector('#navThemeToggle');
+    themeBtn.textContent = window.BP_THEME === 'dark' ? '☀️' : '🌙';
+    themeBtn.setAttribute('aria-label', window.BP_THEME === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    themeBtn.addEventListener('click', () => setTheme(window.BP_THEME === 'dark' ? 'light' : 'dark'));
 
     fetch('/api/btc-price').then(r => r.json()).then(d => {
       if (d.usd) {
