@@ -22,8 +22,6 @@ const RELAYS = [
 // kind 10050) for the owner's pubkey.
 const DISCOVERY_RELAYS = ['wss://purplepag.es', 'wss://relay.nostr.band'];
 
-const TWO_DAYS = 2 * 24 * 60 * 60;
-
 function bytesToHex(bytes) {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -32,59 +30,6 @@ function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
   return bytes;
-}
-
-// NIP-17 timestamps are randomized up to 2 days into the past to thwart
-// time-correlation of the seal/gift-wrap pair with the real message time.
-function randomPastTimestamp() {
-  return Math.floor(Date.now() / 1000) - Math.floor(Math.random() * TWO_DAYS);
-}
-
-// Builds a NIP-17 gift-wrapped DM: rumor (kind 14, unsigned) -> seal (kind 13,
-// signed by the real sender, encrypted to the recipient) -> gift wrap
-// (kind 1059, signed by a one-time throwaway key, encrypted to the recipient).
-async function wrapAsGift(nostrTools, senderSkBytes, recipientPubkeyHex, content) {
-  const { getPublicKey, generateSecretKey, finalizeEvent, nip44 } = nostrTools;
-  const senderPubkey = getPublicKey(senderSkBytes);
-
-  const rumor = {
-    pubkey: senderPubkey,
-    created_at: Math.floor(Date.now() / 1000),
-    kind: 14,
-    tags: [['p', recipientPubkeyHex]],
-    content,
-  };
-
-  const sealContent = nip44.encrypt(senderSkBytes, recipientPubkeyHex, JSON.stringify(rumor));
-  const seal = finalizeEvent({
-    kind: 13,
-    created_at: randomPastTimestamp(),
-    tags: [],
-    content: sealContent,
-  }, senderSkBytes);
-
-  const ephemeralSk = generateSecretKey();
-  const wrapContent = nip44.encrypt(ephemeralSk, recipientPubkeyHex, JSON.stringify(seal));
-  return finalizeEvent({
-    kind: 1059,
-    created_at: randomPastTimestamp(),
-    tags: [['p', recipientPubkeyHex]],
-    content: wrapContent,
-  }, ephemeralSk);
-}
-
-// Unwraps a NIP-17 gift wrap and verifies the inner seal was really signed by
-// expectedSenderPubkeyHex before trusting its content (the wrap's own
-// "pubkey" field is a throwaway key and proves nothing about the sender).
-async function unwrapGift(nostrTools, recipientSkBytes, wrapEvent, expectedSenderPubkeyHex) {
-  const { nip44, verifyEvent } = nostrTools;
-  const sealJson = nip44.decrypt(recipientSkBytes, wrapEvent.pubkey, wrapEvent.content);
-  const seal = JSON.parse(sealJson);
-  if (seal.pubkey !== expectedSenderPubkeyHex || !verifyEvent(seal)) return null;
-  const rumorJson = nip44.decrypt(recipientSkBytes, seal.pubkey, seal.content);
-  const rumor = JSON.parse(rumorJson);
-  if (rumor.pubkey !== expectedSenderPubkeyHex) return null;
-  return rumor;
 }
 
 export async function initChat(container, { petId, petName } = {}) {
@@ -125,7 +70,7 @@ export async function initChat(container, { petId, petName } = {}) {
     statusEl.textContent = 'Live chat is temporarily unavailable. Please try again later.';
     return;
   }
-  const { generateSecretKey, getPublicKey, finalizeEvent, SimplePool } = nostrTools;
+  const { generateSecretKey, getPublicKey, finalizeEvent, nip17, SimplePool } = nostrTools;
 
   let skHex = localStorage.getItem('bp_nostr_sk');
   if (!skHex) {
@@ -180,7 +125,7 @@ export async function initChat(container, { petId, petName } = {}) {
   async function send(text) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const wrap = await wrapAsGift(nostrTools, skBytes, OWNER_PUBKEY_HEX, trimmed);
+    const wrap = nip17.wrapEvent(skBytes, { publicKey: OWNER_PUBKEY_HEX, relayUrl: RELAYS[0] }, trimmed);
     await Promise.allSettled(pool.publish(dmRelays, wrap));
     addBubble(trimmed, 'sent');
   }
@@ -196,11 +141,11 @@ export async function initChat(container, { petId, petName } = {}) {
     if (e.key === 'Enter') handleSend();
   });
 
-  pool.subscribeMany(dmRelays, [{ kinds: [1059], '#p': [pubkey] }], {
-    onevent: async (event) => {
+  pool.subscribeMany(dmRelays, { kinds: [1059], '#p': [pubkey] }, {
+    onevent: (event) => {
       try {
-        const rumor = await unwrapGift(nostrTools, skBytes, event, OWNER_PUBKEY_HEX);
-        if (rumor) addBubble(rumor.content, 'recv');
+        const rumor = nip17.unwrapEvent(event, skBytes);
+        if (rumor.pubkey === OWNER_PUBKEY_HEX) addBubble(rumor.content, 'recv');
       } catch {
         // Not a valid gift wrap for us — ignore.
       }
