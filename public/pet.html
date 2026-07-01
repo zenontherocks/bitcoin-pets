@@ -461,6 +461,7 @@
             ${specsHtml.length ? `<div class="specs"><div class="specs-title">Details</div>${specsHtml}</div>` : ''}
             ${pet.pbt_id ? `<div style="font-size:0.75rem;color:#aaa;margin-top:0.5rem">PBT ID: ${escHtml(pet.pbt_id)}</div>` : ''}
           </div>
+          ${pet.vaccinations ? `<div class="section" style="grid-column:1;margin-top:0"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
         </div>
         ${pet.vaccinations ? `<div class="section" style="margin-top:1.25rem"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
       `;
