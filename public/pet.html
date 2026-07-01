@@ -463,7 +463,6 @@
           </div>
           ${pet.vaccinations ? `<div class="section" style="grid-column:1;margin-top:0"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
         </div>
-        ${pet.vaccinations ? `<div class="section" style="margin-top:1.25rem"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
       `;
 
       document.querySelectorAll('.thumb').forEach(thumb => {
