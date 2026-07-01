@@ -89,7 +89,12 @@ export async function initChat(container, { petId, petName } = {}) {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  const pool = new SimplePool();
+  // Some relays require NIP-42 auth before they'll deliver DM-related event
+  // kinds (to stop third parties from scraping who's messaging whom) —
+  // auto-respond to any auth challenge using our own throwaway key.
+  const pool = new SimplePool({
+    automaticallyAuth: () => (authEvent) => Promise.resolve(finalizeEvent(authEvent, skBytes)),
+  });
 
   // Find where the owner actually wants DMs delivered: their NIP-17 "DM
   // relay list" (kind 10050) if published, falling back to their general
@@ -104,8 +109,9 @@ export async function initChat(container, { petId, petName } = {}) {
     const fromTags = (event, tagName) =>
       event ? event.tags.filter(t => t[0] === tagName && t[1] && t[2] !== 'read').map(t => t[1]) : [];
     dmRelays = Array.from(new Set([...RELAYS, ...fromTags(dmListEvent, 'relay'), ...fromTags(generalListEvent, 'r')]));
-  } catch {
-    // Discovery is best-effort; fall back to the default relay list.
+    console.log('[chat] owner kind10050 found:', !!dmListEvent, 'kind10002 found:', !!generalListEvent, 'dmRelays:', dmRelays);
+  } catch (err) {
+    console.log('[chat] relay discovery failed, using defaults:', err);
   }
 
   // Publish our own DM relay list so the owner's client knows where to send
@@ -117,10 +123,15 @@ export async function initChat(container, { petId, petName } = {}) {
       tags: RELAYS.map(url => ['relay', url]),
       content: '',
     }, skBytes);
-    pool.publish(dmRelays, ownDmList);
-  } catch {
-    // Non-fatal — worst case the owner's client falls back to its own relays.
+    const results = await Promise.allSettled(pool.publish(dmRelays, ownDmList));
+    console.log('[chat] published own kind10050 relay list:', results.map(r => r.status));
+  } catch (err) {
+    console.log('[chat] failed to publish own kind10050:', err);
   }
+
+  setTimeout(() => {
+    console.log('[chat] relay connection status:', Object.fromEntries(pool.listConnectionStatus()));
+  }, 4000);
 
   async function send(text) {
     const trimmed = text.trim();
@@ -141,15 +152,19 @@ export async function initChat(container, { petId, petName } = {}) {
     if (e.key === 'Enter') handleSend();
   });
 
+  console.log('[chat] subscribing for gift wraps addressed to', pubkey, 'on', dmRelays);
   pool.subscribeMany(dmRelays, { kinds: [1059], '#p': [pubkey] }, {
     onevent: (event) => {
+      console.log('[chat] received event kind', event.kind, 'from', event.pubkey);
       try {
         const rumor = nip17.unwrapEvent(event, skBytes);
+        console.log('[chat] unwrapped rumor from', rumor.pubkey, 'expected', OWNER_PUBKEY_HEX);
         if (rumor.pubkey === OWNER_PUBKEY_HEX) addBubble(rumor.content, 'recv');
-      } catch {
-        // Not a valid gift wrap for us — ignore.
+      } catch (err) {
+        console.log('[chat] failed to unwrap event:', err);
       }
     },
+    onclose: (reasons) => console.log('[chat] subscription closed:', reasons),
   });
 
   statusEl.textContent = 'Connected — say hello!';
