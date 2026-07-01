@@ -50,6 +50,7 @@
         '<li><a href="/browse">Browse Pets</a></li>' +
         '<li><a href="/how-it-works">How It Works</a></li>' +
         '<li><a href="/about">About</a></li>' +
+        '<li><a href="/contact">Contact</a></li>' +
         '<li><div class="nav-currency-toggle">' +
           '<button data-currency="usd">USD</button>' +
           '<button data-currency="btc">BTC</button>' +
