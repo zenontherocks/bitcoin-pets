@@ -14,6 +14,10 @@ const RELAYS = [
   'wss://relay.primal.net',
   'wss://relay.nostr.band',
 ];
+// Relays used only to look up the owner's own relay list (NIP-65, kind 10002) —
+// their client likely publishes replies to relays of its own choosing, which
+// may not be any of the RELAYS above, so we need to discover and listen there too.
+const DISCOVERY_RELAYS = ['wss://purplepag.es', 'wss://relay.nostr.band'];
 
 function bytesToHex(bytes) {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -84,6 +88,22 @@ export async function initChat(container, { petId, petName } = {}) {
 
   const pool = new SimplePool();
 
+  // The owner's client replies on whatever relays it's configured with, which
+  // may not be any of RELAYS. Look up their published relay list (NIP-65) and
+  // listen there too so replies aren't missed.
+  let listenRelays = RELAYS;
+  try {
+    const relayListEvent = await pool.get([...RELAYS, ...DISCOVERY_RELAYS], { kinds: [10002], authors: [OWNER_PUBKEY_HEX] });
+    if (relayListEvent) {
+      const ownerRelays = relayListEvent.tags
+        .filter(t => t[0] === 'r' && t[1] && t[2] !== 'read')
+        .map(t => t[1]);
+      listenRelays = Array.from(new Set([...RELAYS, ...ownerRelays]));
+    }
+  } catch {
+    // Discovery is best-effort; fall back to the default relay list.
+  }
+
   async function send(text) {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -91,10 +111,10 @@ export async function initChat(container, { petId, petName } = {}) {
     const event = finalizeEvent({
       kind: 4,
       created_at: Math.floor(Date.now() / 1000),
-      tags: [['p', OWNER_PUBKEY_HEX]],
+      tags: [['p', OWNER_PUBKEY_HEX, RELAYS[0]]],
       content: ciphertext,
     }, skBytes);
-    await Promise.allSettled(pool.publish(RELAYS, event));
+    await Promise.allSettled(pool.publish(listenRelays, event));
     addBubble(trimmed, 'sent');
   }
 
@@ -109,7 +129,7 @@ export async function initChat(container, { petId, petName } = {}) {
     if (e.key === 'Enter') handleSend();
   });
 
-  pool.subscribeMany(RELAYS, [{ kinds: [4], authors: [OWNER_PUBKEY_HEX], '#p': [pubkey] }], {
+  pool.subscribeMany(listenRelays, [{ kinds: [4], authors: [OWNER_PUBKEY_HEX], '#p': [pubkey] }], {
     onevent: async (event) => {
       try {
         const text = await nip04.decrypt(skBytes, OWNER_PUBKEY_HEX, event.content);
