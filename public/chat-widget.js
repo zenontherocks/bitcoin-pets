@@ -91,9 +91,14 @@ export async function initChat(container, { petId, petName } = {}) {
 
   // Some relays require NIP-42 auth before they'll deliver DM-related event
   // kinds (to stop third parties from scraping who's messaging whom) —
-  // auto-respond to any auth challenge using our own throwaway key.
+  // auto-respond to any auth challenge using our own throwaway key. Also keep
+  // the connection alive and auto-reconnect: both default to off, so a tab
+  // left idle (e.g. while switching over to reply from a phone app) silently
+  // drops its WebSocket and never sees anything sent after that point.
   const pool = new SimplePool({
     automaticallyAuth: () => (authEvent) => Promise.resolve(finalizeEvent(authEvent, skBytes)),
+    enablePing: true,
+    enableReconnect: true,
   });
 
   // Find where the owner actually wants DMs delivered: their NIP-17 "DM
