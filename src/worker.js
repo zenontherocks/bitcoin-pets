@@ -565,9 +565,14 @@ async function syncPbtListings(env) {
     }
   }
 
-  // Fetch existing pbt_ids so we only scrape detail pages for new listings
-  const existingRows = await env.DB.prepare('SELECT pbt_id FROM pets').all();
-  const existingIds = new Set((existingRows.results || []).map(r => r.pbt_id));
+  // Fetch existing pbt_ids; also find which have no photos so we can backfill them
+  const existingRows = await env.DB.prepare(
+    "SELECT p.pbt_id FROM pets p LEFT JOIN pet_pictures pp ON pp.pet_id = p.id GROUP BY p.id HAVING COUNT(pp.id) = 0"
+  ).all();
+  const missingPhotoIds = new Set((existingRows.results || []).map(r => r.pbt_id));
+
+  const allRows = await env.DB.prepare('SELECT pbt_id FROM pets').all();
+  const existingIds = new Set((allRows.results || []).map(r => r.pbt_id));
 
   for (const { id, slug, price_usd } of listings) {
     if (existingIds.has(id)) {
@@ -577,6 +582,22 @@ async function syncPbtListings(env) {
           await env.DB.prepare(
             "UPDATE pets SET price_usd=?, status='available', updated_at=datetime('now') WHERE pbt_id=?"
           ).bind(price_usd, id).run();
+        } catch { /* ignore */ }
+      }
+      // Re-fetch detail page to backfill missing photos
+      if (missingPhotoIds.has(id)) {
+        try {
+          const detail = await pbtScrapeDetail(cookie, id, slug);
+          if (detail?.images?.length) {
+            const petRow = await env.DB.prepare('SELECT id FROM pets WHERE pbt_id=?').bind(id).first();
+            if (petRow) {
+              for (let i = 0; i < detail.images.length; i++) {
+                await env.DB.prepare(
+                  'INSERT OR IGNORE INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
+                ).bind(crypto.randomUUID(), petRow.id, detail.images[i], i === 0 ? 1 : 0).run();
+              }
+            }
+          }
         } catch { /* ignore */ }
       }
       continue;
