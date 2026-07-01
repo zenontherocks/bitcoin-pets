@@ -1,6 +1,10 @@
 // chat-widget.js — Nostr-based live chat, loaded only on /contact.
 // Visitors get a throwaway keypair (persisted in localStorage) and DM the
-// site owner's npub over public relays. No backend involved.
+// site owner's npub over public relays using NIP-17 gift-wrapped private
+// messages (the format modern clients like 0xChat, Amethyst, and Primal
+// actually send/expect — legacy NIP-04 kind-4 DMs are not reliably readable
+// or repliable-to in those clients). No backend involved.
+//
 // nostr-tools is imported dynamically (not as a static top-level import) so
 // that a failure to reach the CDN degrades to a friendly message instead of
 // silently breaking the whole module (and anything else on the page that
@@ -14,10 +18,11 @@ const RELAYS = [
   'wss://relay.primal.net',
   'wss://relay.nostr.band',
 ];
-// Relays used only to look up the owner's own relay list (NIP-65, kind 10002) —
-// their client likely publishes replies to relays of its own choosing, which
-// may not be any of the RELAYS above, so we need to discover and listen there too.
+// Relays used only to look up relay-list metadata (NIP-65 kind 10002, NIP-17
+// kind 10050) for the owner's pubkey.
 const DISCOVERY_RELAYS = ['wss://purplepag.es', 'wss://relay.nostr.band'];
+
+const TWO_DAYS = 2 * 24 * 60 * 60;
 
 function bytesToHex(bytes) {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -27,6 +32,59 @@ function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
   return bytes;
+}
+
+// NIP-17 timestamps are randomized up to 2 days into the past to thwart
+// time-correlation of the seal/gift-wrap pair with the real message time.
+function randomPastTimestamp() {
+  return Math.floor(Date.now() / 1000) - Math.floor(Math.random() * TWO_DAYS);
+}
+
+// Builds a NIP-17 gift-wrapped DM: rumor (kind 14, unsigned) -> seal (kind 13,
+// signed by the real sender, encrypted to the recipient) -> gift wrap
+// (kind 1059, signed by a one-time throwaway key, encrypted to the recipient).
+async function wrapAsGift(nostrTools, senderSkBytes, recipientPubkeyHex, content) {
+  const { getPublicKey, generateSecretKey, finalizeEvent, nip44 } = nostrTools;
+  const senderPubkey = getPublicKey(senderSkBytes);
+
+  const rumor = {
+    pubkey: senderPubkey,
+    created_at: Math.floor(Date.now() / 1000),
+    kind: 14,
+    tags: [['p', recipientPubkeyHex]],
+    content,
+  };
+
+  const sealContent = nip44.encrypt(senderSkBytes, recipientPubkeyHex, JSON.stringify(rumor));
+  const seal = finalizeEvent({
+    kind: 13,
+    created_at: randomPastTimestamp(),
+    tags: [],
+    content: sealContent,
+  }, senderSkBytes);
+
+  const ephemeralSk = generateSecretKey();
+  const wrapContent = nip44.encrypt(ephemeralSk, recipientPubkeyHex, JSON.stringify(seal));
+  return finalizeEvent({
+    kind: 1059,
+    created_at: randomPastTimestamp(),
+    tags: [['p', recipientPubkeyHex]],
+    content: wrapContent,
+  }, ephemeralSk);
+}
+
+// Unwraps a NIP-17 gift wrap and verifies the inner seal was really signed by
+// expectedSenderPubkeyHex before trusting its content (the wrap's own
+// "pubkey" field is a throwaway key and proves nothing about the sender).
+async function unwrapGift(nostrTools, recipientSkBytes, wrapEvent, expectedSenderPubkeyHex) {
+  const { nip44, verifyEvent } = nostrTools;
+  const sealJson = nip44.decrypt(recipientSkBytes, wrapEvent.pubkey, wrapEvent.content);
+  const seal = JSON.parse(sealJson);
+  if (seal.pubkey !== expectedSenderPubkeyHex || !verifyEvent(seal)) return null;
+  const rumorJson = nip44.decrypt(recipientSkBytes, seal.pubkey, seal.content);
+  const rumor = JSON.parse(rumorJson);
+  if (rumor.pubkey !== expectedSenderPubkeyHex) return null;
+  return rumor;
 }
 
 export async function initChat(container, { petId, petName } = {}) {
@@ -67,7 +125,7 @@ export async function initChat(container, { petId, petName } = {}) {
     statusEl.textContent = 'Live chat is temporarily unavailable. Please try again later.';
     return;
   }
-  const { generateSecretKey, getPublicKey, finalizeEvent, nip04, SimplePool } = nostrTools;
+  const { generateSecretKey, getPublicKey, finalizeEvent, SimplePool } = nostrTools;
 
   let skHex = localStorage.getItem('bp_nostr_sk');
   if (!skHex) {
@@ -88,33 +146,42 @@ export async function initChat(container, { petId, petName } = {}) {
 
   const pool = new SimplePool();
 
-  // The owner's client replies on whatever relays it's configured with, which
-  // may not be any of RELAYS. Look up their published relay list (NIP-65) and
-  // listen there too so replies aren't missed.
-  let listenRelays = RELAYS;
+  // Find where the owner actually wants DMs delivered: their NIP-17 "DM
+  // relay list" (kind 10050) if published, falling back to their general
+  // NIP-65 relay list (kind 10002), merged with our own defaults.
+  let dmRelays = RELAYS;
   try {
-    const relayListEvent = await pool.get([...RELAYS, ...DISCOVERY_RELAYS], { kinds: [10002], authors: [OWNER_PUBKEY_HEX] });
-    if (relayListEvent) {
-      const ownerRelays = relayListEvent.tags
-        .filter(t => t[0] === 'r' && t[1] && t[2] !== 'read')
-        .map(t => t[1]);
-      listenRelays = Array.from(new Set([...RELAYS, ...ownerRelays]));
-    }
+    const lookupRelays = [...RELAYS, ...DISCOVERY_RELAYS];
+    const [dmListEvent, generalListEvent] = await Promise.all([
+      pool.get(lookupRelays, { kinds: [10050], authors: [OWNER_PUBKEY_HEX] }),
+      pool.get(lookupRelays, { kinds: [10002], authors: [OWNER_PUBKEY_HEX] }),
+    ]);
+    const fromTags = (event, tagName) =>
+      event ? event.tags.filter(t => t[0] === tagName && t[1] && t[2] !== 'read').map(t => t[1]) : [];
+    dmRelays = Array.from(new Set([...RELAYS, ...fromTags(dmListEvent, 'relay'), ...fromTags(generalListEvent, 'r')]));
   } catch {
     // Discovery is best-effort; fall back to the default relay list.
+  }
+
+  // Publish our own DM relay list so the owner's client knows where to send
+  // gift-wrapped replies to this throwaway visitor identity.
+  try {
+    const ownDmList = finalizeEvent({
+      kind: 10050,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: RELAYS.map(url => ['relay', url]),
+      content: '',
+    }, skBytes);
+    pool.publish(dmRelays, ownDmList);
+  } catch {
+    // Non-fatal — worst case the owner's client falls back to its own relays.
   }
 
   async function send(text) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const ciphertext = await nip04.encrypt(skBytes, OWNER_PUBKEY_HEX, trimmed);
-    const event = finalizeEvent({
-      kind: 4,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [['p', OWNER_PUBKEY_HEX, RELAYS[0]]],
-      content: ciphertext,
-    }, skBytes);
-    await Promise.allSettled(pool.publish(listenRelays, event));
+    const wrap = await wrapAsGift(nostrTools, skBytes, OWNER_PUBKEY_HEX, trimmed);
+    await Promise.allSettled(pool.publish(dmRelays, wrap));
     addBubble(trimmed, 'sent');
   }
 
@@ -129,13 +196,13 @@ export async function initChat(container, { petId, petName } = {}) {
     if (e.key === 'Enter') handleSend();
   });
 
-  pool.subscribeMany(listenRelays, [{ kinds: [4], authors: [OWNER_PUBKEY_HEX], '#p': [pubkey] }], {
+  pool.subscribeMany(dmRelays, [{ kinds: [1059], '#p': [pubkey] }], {
     onevent: async (event) => {
       try {
-        const text = await nip04.decrypt(skBytes, OWNER_PUBKEY_HEX, event.content);
-        addBubble(text, 'recv');
+        const rumor = await unwrapGift(nostrTools, skBytes, event, OWNER_PUBKEY_HEX);
+        if (rumor) addBubble(rumor.content, 'recv');
       } catch {
-        // Not decryptable with our key — ignore.
+        // Not a valid gift wrap for us — ignore.
       }
     },
   });
