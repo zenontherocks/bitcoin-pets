@@ -47,10 +47,7 @@
       gap: 2rem;
       align-items: start;
     }
-    @media (max-width: 720px) {
-      .pet-layout { grid-template-columns: 1fr; }
-      .vaccinations-section { order: 99; }
-    }
+    @media (max-width: 720px) { .pet-layout { grid-template-columns: 1fr; } }
 
     .gallery { display: flex; flex-direction: column; gap: 0.75rem; }
     .gallery-main {
@@ -445,7 +442,6 @@
             ${pet.description ? `<div class="section" style="margin-top:1.25rem"><h2>About</h2><p>${escHtml(pet.description)}</p></div>` : ''}
             ${pet.health_info ? `<div class="section" style="margin-top:1rem"><h2>Health Information</h2><p>${escHtml(pet.health_info)}</p></div>` : ''}
           </div>
-          ${pet.vaccinations ? `<div class="section vaccinations-section" style="grid-column:1"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
           <div class="details-panel">
             <div>
               <div class="pet-title">${escHtml(pet.name)}</div>
@@ -466,6 +462,7 @@
             ${pet.pbt_id ? `<div style="font-size:0.75rem;color:#aaa;margin-top:0.5rem">PBT ID: ${escHtml(pet.pbt_id)}</div>` : ''}
           </div>
         </div>
+        ${pet.vaccinations ? `<div class="section" style="margin-top:1.25rem"><h2>Vaccinations</h2><p>${escHtml(pet.vaccinations)}</p></div>` : ''}
       `;
 
       document.querySelectorAll('.thumb').forEach(thumb => {
