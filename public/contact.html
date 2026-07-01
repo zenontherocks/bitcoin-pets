@@ -9,16 +9,20 @@
     :root {
       --orange: #f7931a; --orange-dark: #d97b0e; --dark: #1a1a1a; --gray: #555;
       --border: #ddd; --light-gray: #f7f3ee; --white: #fffefb; --radius: 8px;
+      --bg: var(--light-gray); --surface: var(--white); --text: var(--dark);
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--dark); background: var(--light-gray); display: flex; flex-direction: column; min-height: 100vh; }
+    :root[data-theme="dark"] {
+      --bg: #16171a; --surface: #1e2024; --text: #ececec; --gray: #9c9c9c; --border: #34363c;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--bg); display: flex; flex-direction: column; min-height: 100vh; }
     main { flex: 1; max-width: 600px; width: 100%; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; }
     .hero { margin-bottom: 2.5rem; }
     .hero h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 0.75rem; }
     .hero p { font-size: 1.05rem; color: var(--gray); line-height: 1.7; }
     .section { margin-bottom: 2.5rem; }
     .section h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--orange); display: inline-block; }
-    .chat-context { font-size: 0.85rem; color: var(--gray); background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.85rem; margin-bottom: 0.75rem; }
-    .phone-box { background: var(--white); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,0.07); color: var(--gray); font-size: 0.95rem; }
+    .chat-context { font-size: 0.85rem; color: var(--gray); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.85rem; margin-bottom: 0.75rem; }
+    .phone-box { background: var(--surface); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,0.07); color: var(--gray); font-size: 0.95rem; }
     footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
     footer a { color: var(--orange); text-decoration: none; }
     footer a:hover { text-decoration: underline; }

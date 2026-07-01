@@ -35,14 +35,14 @@ function hexToBytes(hex) {
 export async function initChat(container, { petId, petName } = {}) {
   const style = document.createElement('style');
   style.textContent = [
-    '.chat-box{display:flex;flex-direction:column;height:420px;border:1px solid var(--border,#ddd);border-radius:var(--radius,8px);background:var(--white,#fff);overflow:hidden;}',
+    '.chat-box{display:flex;flex-direction:column;height:420px;border:1px solid var(--border,#ddd);border-radius:var(--radius,8px);background:var(--surface,var(--white,#fff));overflow:hidden;}',
     '.chat-messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.6rem;}',
     '.chat-bubble{max-width:80%;padding:0.55rem 0.85rem;border-radius:14px;font-size:0.9rem;line-height:1.4;word-wrap:break-word;white-space:pre-wrap;}',
     '.chat-bubble.sent{align-self:flex-end;background:var(--orange,#f7931a);color:#fff;border-bottom-right-radius:4px;}',
-    '.chat-bubble.recv{align-self:flex-start;background:var(--light-gray,#f0f0f0);color:var(--dark,#1a1a1a);border-bottom-left-radius:4px;}',
+    '.chat-bubble.recv{align-self:flex-start;background:var(--bg,var(--light-gray,#f0f0f0));color:var(--text,var(--dark,#1a1a1a));border-bottom-left-radius:4px;}',
     '.chat-status{font-size:0.8rem;color:#999;text-align:center;padding:0.5rem;}',
     '.chat-input-row{display:flex;border-top:1px solid var(--border,#ddd);}',
-    '.chat-input-row input{flex:1;border:none;padding:0.75rem;font-size:0.9rem;font-family:inherit;outline:none;}',
+    '.chat-input-row input{flex:1;border:none;padding:0.75rem;font-size:0.9rem;font-family:inherit;outline:none;background:var(--surface,var(--white,#fff));color:var(--text,var(--dark,#1a1a1a));}',
     '.chat-input-row button{border:none;background:var(--orange,#f7931a);color:#fff;padding:0 1.25rem;font-weight:700;cursor:pointer;}',
     '.chat-input-row button:hover{background:var(--orange-dark,#d97b0e);}',
     '.chat-input-row button:disabled{opacity:0.5;cursor:default;}',
