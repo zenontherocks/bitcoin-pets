@@ -91,6 +91,13 @@
     .btn-buy:hover { background: var(--orange-dark); }
     .btn-buy:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    .btn-chat {
+      display: block; width: 100%; padding: 0.7rem; background: none; color: var(--dark);
+      font-size: 0.9rem; font-weight: 700; border: 2px solid var(--dark); border-radius: var(--radius);
+      text-align: center; text-decoration: none; transition: background 0.15s, color 0.15s;
+    }
+    .btn-chat:hover { background: var(--dark); color: #fff; }
+
     .pending-expiry { font-size: 0.8rem; color: #d97b0e; margin-top: 0.4rem; font-weight: 600; }
 
     .specs {
@@ -458,6 +465,7 @@
               : pet.status === 'pending'
                 ? `<button class="btn-buy" disabled>Purchase in Progress</button>`
                 : `<button class="btn-buy" disabled>Sold</button>`}
+            <a class="btn-chat" href="/contact?petId=${encodeURIComponent(pet.id)}&petName=${encodeURIComponent(pet.name)}">Chat about this pet</a>
             ${specsHtml.length ? `<div class="specs"><div class="specs-title">Details</div>${specsHtml}</div>` : ''}
             ${pet.pbt_id ? `<div style="font-size:0.75rem;color:#aaa;margin-top:0.5rem">PBT ID: ${escHtml(pet.pbt_id)}</div>` : ''}
           </div>
