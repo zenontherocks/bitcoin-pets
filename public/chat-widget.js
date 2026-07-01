@@ -70,7 +70,7 @@ export async function initChat(container, { petId, petName } = {}) {
     statusEl.textContent = 'Live chat is temporarily unavailable. Please try again later.';
     return;
   }
-  const { generateSecretKey, getPublicKey, finalizeEvent, nip17, SimplePool } = nostrTools;
+  const { generateSecretKey, getPublicKey, finalizeEvent, nip17, nip19, SimplePool } = nostrTools;
 
   let skHex = localStorage.getItem('bp_nostr_sk');
   if (!skHex) {
@@ -79,6 +79,28 @@ export async function initChat(container, { petId, petName } = {}) {
   }
   const skBytes = hexToBytes(skHex);
   const pubkey = getPublicKey(skBytes);
+
+  const showNsecBtn = document.getElementById('showNsecBtn');
+  const nsecReveal = document.getElementById('nsecReveal');
+  if (showNsecBtn && nsecReveal) {
+    showNsecBtn.addEventListener('click', () => {
+      const nsec = nip19.nsecEncode(skBytes);
+      const code = document.createElement('code');
+      code.textContent = nsec;
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.textContent = 'Copy';
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(nsec).then(() => {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+        });
+      });
+      nsecReveal.replaceChildren(code, copyBtn);
+      nsecReveal.style.display = 'flex';
+      showNsecBtn.closest('.key-note').style.display = 'none';
+    });
+  }
 
   function addBubble(text, kind) {
     if (statusEl && statusEl.parentNode) statusEl.remove();

@@ -22,6 +22,12 @@
     .section { margin-bottom: 2.5rem; }
     .section h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--orange); display: inline-block; }
     .chat-context { font-size: 0.85rem; color: var(--gray); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.85rem; margin-bottom: 0.75rem; }
+    .key-note { font-size: 0.85rem; color: var(--gray); margin-top: 0.75rem; line-height: 1.6; }
+    .link-btn { background: none; border: none; padding: 0; color: var(--orange); text-decoration: underline; cursor: pointer; font: inherit; }
+    .link-btn:hover { color: var(--orange-dark); }
+    .nsec-reveal { display: none; margin-top: 0.5rem; padding: 0.6rem 0.85rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); align-items: center; justify-content: space-between; gap: 0.75rem; }
+    .nsec-reveal code { font-family: ui-monospace, monospace; font-size: 0.8rem; word-break: break-all; }
+    .nsec-reveal button { flex-shrink: 0; background: var(--dark); color: #fff; border: none; border-radius: 6px; padding: 0.35rem 0.65rem; font-size: 0.75rem; cursor: pointer; }
     .phone-box { background: var(--surface); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,0.07); color: var(--gray); font-size: 0.95rem; }
     footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
     footer a { color: var(--orange); text-decoration: none; }
@@ -36,6 +42,8 @@
   <div class="hero">
     <h1>Contact Us</h1>
     <p>Have a question about a listing or an order? Chat with us live below &mdash; no account needed.</p>
+    <p class="key-note">A Nostr keypair has been generated for this chat and should persist across browser windows. To show the nsec for this keypair, <button type="button" id="showNsecBtn" class="link-btn">click here</button>.</p>
+    <div class="nsec-reveal" id="nsecReveal"></div>
   </div>
 
   <div class="section">
