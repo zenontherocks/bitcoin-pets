@@ -89,6 +89,11 @@ export async function initChat(container, { petId, petName } = {}) {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  // Avoids showing the same message twice across the three ways it can
+  // arrive: the initial history load, the live subscription, and the
+  // focus-triggered refetch.
+  const seenEventIds = new Set();
+
   // Some relays require NIP-42 auth before they'll deliver DM-related event
   // kinds (to stop third parties from scraping who's messaging whom) —
   // auto-respond to any auth challenge using our own throwaway key. Also keep
@@ -138,11 +143,15 @@ export async function initChat(container, { petId, petName } = {}) {
     console.log('[chat] relay connection status:', Object.fromEntries(pool.listConnectionStatus()));
   }, 4000);
 
+  // NIP-17 lets a message be wrapped once per recipient, including the
+  // sender themselves — so our own sent messages become recoverable from
+  // the relays too (not just an in-memory echo lost on reload).
   async function send(text) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const wrap = nip17.wrapEvent(skBytes, { publicKey: OWNER_PUBKEY_HEX, relayUrl: RELAYS[0] }, trimmed);
-    await Promise.allSettled(pool.publish(dmRelays, wrap));
+    const wraps = nip17.wrapManyEvents(skBytes, [{ publicKey: OWNER_PUBKEY_HEX, relayUrl: RELAYS[0] }], trimmed);
+    wraps.forEach(w => seenEventIds.add(w.id));
+    await Promise.allSettled(wraps.flatMap(w => pool.publish(dmRelays, w)));
     addBubble(trimmed, 'sent');
   }
 
@@ -157,19 +166,61 @@ export async function initChat(container, { petId, petName } = {}) {
     if (e.key === 'Enter') handleSend();
   });
 
+  function unwrapValid(event) {
+    try {
+      const rumor = nip17.unwrapEvent(event, skBytes);
+      if (rumor.pubkey === OWNER_PUBKEY_HEX || rumor.pubkey === pubkey) return rumor;
+    } catch (err) {
+      console.log('[chat] failed to unwrap event:', err);
+    }
+    return null;
+  }
+
+  function displayRumor(rumor) {
+    addBubble(rumor.content, rumor.pubkey === pubkey ? 'sent' : 'recv');
+  }
+
+  function handleIncomingWrap(event) {
+    if (seenEventIds.has(event.id)) return;
+    seenEventIds.add(event.id);
+    const rumor = unwrapValid(event);
+    if (rumor) displayRumor(rumor);
+  }
+
+  // Gift-wrap timestamps are deliberately randomized (NIP-59) for privacy,
+  // so history has to be sorted by the rumor's real created_at, not the
+  // order events happen to arrive in.
+  async function loadHistory() {
+    const stored = await pool.querySync(dmRelays, { kinds: [1059], '#p': [pubkey] });
+    console.log('[chat] loaded', stored.length, 'stored gift wraps');
+    const rumors = [];
+    for (const event of stored) {
+      if (seenEventIds.has(event.id)) continue;
+      seenEventIds.add(event.id);
+      const rumor = unwrapValid(event);
+      if (rumor) rumors.push(rumor);
+    }
+    rumors.sort((a, b) => a.created_at - b.created_at);
+    rumors.forEach(displayRumor);
+  }
+
+  await loadHistory();
+
   console.log('[chat] subscribing for gift wraps addressed to', pubkey, 'on', dmRelays);
   pool.subscribeMany(dmRelays, { kinds: [1059], '#p': [pubkey] }, {
-    onevent: (event) => {
-      console.log('[chat] received event kind', event.kind, 'from', event.pubkey);
-      try {
-        const rumor = nip17.unwrapEvent(event, skBytes);
-        console.log('[chat] unwrapped rumor from', rumor.pubkey, 'expected', OWNER_PUBKEY_HEX);
-        if (rumor.pubkey === OWNER_PUBKEY_HEX) addBubble(rumor.content, 'recv');
-      } catch (err) {
-        console.log('[chat] failed to unwrap event:', err);
-      }
-    },
+    onevent: handleIncomingWrap,
     onclose: (reasons) => console.log('[chat] subscription closed:', reasons),
+  });
+
+  // Backgrounded tabs get their JS timers throttled by the browser, which
+  // can silently stall the subscription's WebSocket (and even the ping/
+  // reconnect logic meant to fix that, since it also runs on a timer). The
+  // fix isn't a better timer — it's re-checking as soon as the tab is
+  // visible again, which `visibilitychange` reports reliably regardless of
+  // throttling.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    loadHistory().catch(err => console.log('[chat] refetch on focus failed:', err));
   });
 
   statusEl.textContent = 'Connected — say hello!';
