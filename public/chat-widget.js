@@ -87,6 +87,8 @@ export async function initChat(container, { petId, petName } = {}) {
       const nsec = nip19.nsecEncode(skBytes);
       const code = document.createElement('code');
       code.textContent = nsec;
+      const actions = document.createElement('div');
+      actions.className = 'nsec-reveal-actions';
       const copyBtn = document.createElement('button');
       copyBtn.type = 'button';
       copyBtn.textContent = 'Copy';
@@ -96,9 +98,16 @@ export async function initChat(container, { petId, petName } = {}) {
           setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
         });
       });
-      nsecReveal.replaceChildren(code, copyBtn);
+      const hideBtn = document.createElement('button');
+      hideBtn.type = 'button';
+      hideBtn.textContent = 'Hide';
+      hideBtn.addEventListener('click', () => {
+        nsecReveal.style.display = 'none';
+        nsecReveal.replaceChildren();
+      });
+      actions.append(copyBtn, hideBtn);
+      nsecReveal.replaceChildren(code, actions);
       nsecReveal.style.display = 'flex';
-      showNsecBtn.closest('.key-note').style.display = 'none';
     });
   }
 
