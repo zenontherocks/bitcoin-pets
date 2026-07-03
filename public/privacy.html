@@ -30,6 +30,9 @@
     footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
     footer a { color: var(--orange); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
+    .cookie-notice { margin-top: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 0.6rem; flex-wrap: wrap; font-size: 0.75rem; color: #888; }
+    .cookie-btn { font-size: 0.7rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 100px; border: 1px solid #555; background: transparent; color: #ccc; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .cookie-btn:hover { background: var(--orange); border-color: var(--orange); color: var(--white); }
   </style>
   <script src="/navbar.js"></script>
   <script src="/shared.js"></script>
@@ -84,6 +87,11 @@
     &nbsp;&bull;&nbsp;<a href="/privacy">Privacy Policy</a>
     &nbsp;&bull;&nbsp;<a href="/terms">Terms of Service</a>
   </p>
+  <div class="cookie-notice" id="cookieNotice">
+    <span>We don&rsquo;t do cookies here.</span>
+    <button type="button" class="cookie-btn" data-choice="accept">Accept</button>
+    <button type="button" class="cookie-btn" data-choice="reluctant">Accept Reluctantly</button>
+  </div>
 </footer>
 
 </body>

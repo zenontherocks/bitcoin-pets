@@ -30,4 +30,18 @@ var SPECIES_ICON = {
 document.addEventListener('DOMContentLoaded', function () {
   var el = document.getElementById('year');
   if (el) el.textContent = new Date().getFullYear();
+
+  var notice = document.getElementById('cookieNotice');
+  if (notice) {
+    if (localStorage.getItem('cookieNoticeChoice')) {
+      notice.style.display = 'none';
+    } else {
+      notice.querySelectorAll('.cookie-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          localStorage.setItem('cookieNoticeChoice', btn.dataset.choice);
+          notice.style.display = 'none';
+        });
+      });
+    }
+  }
 });
