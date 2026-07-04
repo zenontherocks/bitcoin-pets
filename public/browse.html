@@ -216,16 +216,16 @@
       }
 
       const gender = (pet.gender && pet.gender !== 'unknown') ? pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1) : '';
-      const label = [
-        gender,
-        pet.breed
-      ].filter(Boolean).join(' ');
+      const label = [gender, pet.breed].filter(Boolean).join(' ');
+      const age = ageFromDob(pet.date_of_birth);
+      const weight = pet.weight_lbs ? pet.weight_lbs + ' lbs' : null;
+      const meta = [age, weight].filter(Boolean).join(' · ');
 
       const info = document.createElement('div');
       info.className = 'pet-info';
       info.innerHTML = `
         <div class="pet-name">${escHtml(label)}</div>
-        <div class="pet-meta"></div>
+        <div class="pet-meta">${escHtml(meta)}</div>
         <div class="pet-price"></div>
         <div class="pet-price-sub"></div>
       `;

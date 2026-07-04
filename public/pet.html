@@ -356,18 +356,6 @@
       catch { return str; }
     }
 
-    function ageFromDob(dob) {
-      if (!dob) return null;
-      const birth = new Date(dob);
-      const now   = new Date();
-      let years  = now.getFullYear() - birth.getFullYear();
-      let months = now.getMonth() - birth.getMonth();
-      if (months < 0) { years--; months += 12; }
-      if (years > 0) return years + ' yr' + (years > 1 ? 's' : '') + (months > 0 ? ', ' + months + ' mo' : '');
-      if (months > 0) return months + ' month' + (months > 1 ? 's' : '');
-      return 'Less than 1 month';
-    }
-
     const params = new URLSearchParams(location.search);
     const petId  = params.get('id');
 
