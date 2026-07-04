@@ -21,6 +21,18 @@ function formatSats(btc) {
   return Math.round(Number(btc) * 1e8).toLocaleString('en-US') + ' sats';
 }
 
+function ageFromDob(dob) {
+  if (!dob) return null;
+  var birth = new Date(dob);
+  var now = new Date();
+  var years = now.getFullYear() - birth.getFullYear();
+  var months = now.getMonth() - birth.getMonth();
+  if (months < 0) { years--; months += 12; }
+  if (years > 0) return years + ' yr' + (years > 1 ? 's' : '') + (months > 0 ? ', ' + months + ' mo' : '');
+  if (months > 0) return months + ' month' + (months > 1 ? 's' : '');
+  return 'Less than 1 month';
+}
+
 var SPECIES_ICON = {
   dog: '&#128054;', cat: '&#128049;', bird: '&#128038;', reptile: '&#129422;',
   'small animal': '&#128057;', fish: '&#128032;', horse: '&#128052;', other: '&#128062;'

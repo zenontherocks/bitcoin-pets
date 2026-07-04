@@ -246,6 +246,7 @@ async function handleListPets(request, env, url) {
 
   const rows = await env.DB.prepare(`
     SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_usd, p.created_at,
+           p.date_of_birth, p.weight_lbs,
            pp.url AS photo_url
     FROM pets p
     LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
