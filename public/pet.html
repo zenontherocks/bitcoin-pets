@@ -20,8 +20,6 @@
       --bg: var(--light-gray);
       --surface: var(--white);
       --text: var(--dark);
-      --price-box-bg: #fffaf3;
-      --price-box-border: #f7c97a;
     }
 
     :root[data-theme="dark"] {
@@ -30,8 +28,6 @@
       --text: #ececec;
       --gray: #9c9c9c;
       --border: #34363c;
-      --price-box-bg: rgba(247,147,26,0.12);
-      --price-box-border: rgba(247,147,26,0.45);
     }
 
     body {
@@ -90,21 +86,18 @@
       color: var(--gray); text-transform: capitalize; margin-top: 0.25rem;
     }
 
-    .price-box {
-      background: var(--price-box-bg); border: 1.5px solid var(--price-box-border);
-      border-radius: var(--radius); padding: 1rem 1.25rem;
-    }
-    .price-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); }
-    .price-value { font-size: 2rem; font-weight: 800; color: var(--orange); margin-top: 0.1rem; }
-    .price-secondary { font-size: 0.9rem; color: var(--gray); margin-top: 0.2rem; font-weight: 500; }
-
     .btn-buy {
-      width: 100%; padding: 0.9rem; background: var(--orange); color: #fff;
-      font-size: 1rem; font-weight: 700; border: none; border-radius: var(--radius);
+      width: 100%; padding: 1.1rem 1.25rem; background: var(--orange); color: #fff;
+      border: none; border-radius: var(--radius);
       cursor: pointer; transition: background 0.15s;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem; text-align: center;
     }
     .btn-buy:hover { background: var(--orange-dark); }
     .btn-buy:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-buy-price { font-size: 1.5rem; font-weight: 900; line-height: 1.1; }
+    .btn-buy-price-secondary { font-size: 0.85rem; font-weight: 500; opacity: 0.85; }
+    .btn-buy-label { font-size: 1rem; font-weight: 700; margin-top: 0.25rem; }
+    .btn-buy-note { font-size: 0.72rem; font-weight: 400; opacity: 0.8; line-height: 1.4; margin-top: 0.2rem; }
 
     .btn-chat {
       display: block; width: 100%; padding: 0.7rem; background: none; color: var(--text);
@@ -481,13 +474,13 @@
               <span class="pet-species-badge" style="background:${statusColor}22;color:${statusColor}">${statusLabel}</span>
             </div>
             ${data.order_expires_at && pet.status === 'pending' ? `<div class="pending-expiry" id="pendingExpiry"></div>` : ''}
-            <div class="price-box">
-              <div class="price-label">Price</div>
-              <div class="price-value" id="priceValue"></div>
-              <div class="price-secondary" id="priceSecondary"></div>
-            </div>
             ${pet.status === 'available'
-              ? `<button class="btn-buy" id="buyBtn">Buy with Bitcoin</button>`
+              ? `<button class="btn-buy" id="buyBtn">
+                  <span class="btn-buy-price" id="priceValue"></span>
+                  <span class="btn-buy-price-secondary" id="priceSecondary"></span>
+                  <span class="btn-buy-label">Buy this Pet with Bitcoin</span>
+                  <span class="btn-buy-note">Price includes transport and is refundable if the pet cannot be delivered.</span>
+                </button>`
               : pet.status === 'pending'
                 ? `<button class="btn-buy" disabled>Purchase in Progress</button>`
                 : `<button class="btn-buy" disabled>Sold</button>`}
