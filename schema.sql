@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS pets (
   registry_number TEXT,
   microchip_id TEXT,
   price_usd REAL NOT NULL,                       -- always USD (PBT buy-now price)
+  pbt_seller TEXT,                               -- PBT seller username (lowercased)
   status TEXT NOT NULL DEFAULT 'available'
     CHECK(status IN ('available', 'pending', 'sold', 'ended')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -63,6 +64,12 @@ CREATE TABLE IF NOT EXISTS orders (
   buyer_state     TEXT NOT NULL,
   buyer_zip       TEXT NOT NULL,
   buyer_country   TEXT NOT NULL DEFAULT 'US'
+);
+
+-- Seller blacklist: PBT seller usernames whose listings should not appear on the site.
+CREATE TABLE IF NOT EXISTS seller_blacklist (
+  username TEXT PRIMARY KEY,
+  added_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Key-value store for worker settings.
