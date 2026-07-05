@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Seller Blacklist — Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f4f4; color: #1a1a1a; padding: 2rem 1rem; }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .subtitle { font-size: 0.875rem; color: #666; margin-bottom: 2rem; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem; margin-bottom: 1.5rem; }
+    h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .add-row { display: flex; gap: 0.5rem; }
+    .add-row input { flex: 1; padding: 0.55rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-size: 0.9rem; font-family: inherit; }
+    .add-row input:focus { outline: none; border-color: #f7931a; }
+    .btn { padding: 0.55rem 1.25rem; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-add { background: #f7931a; color: #fff; }
+    .btn-add:hover { background: #d97b0e; }
+    .btn-remove { background: #fee2e2; color: #b91c1c; font-size: 0.8rem; padding: 0.3rem 0.75rem; }
+    .btn-remove:hover { background: #fecaca; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid #f0f0f0; font-size: 0.875rem; }
+    th { color: #666; font-weight: 600; }
+    .empty { color: #999; font-size: 0.875rem; padding: 0.75rem 0.5rem; }
+    .token-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .token-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-size: 0.85rem; font-family: monospace; }
+    .token-row input:focus { outline: none; border-color: #f7931a; }
+    .msg { font-size: 0.8rem; padding: 0.5rem 0.75rem; border-radius: 6px; margin-top: 0.75rem; }
+    .msg-ok  { background: #dcfce7; color: #166534; }
+    .msg-err { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Seller Blacklist</h1>
+    <p class="subtitle">Listings from blacklisted sellers are hidden and will be marked ended on the next sync.</p>
+
+    <div class="card">
+      <h2>Admin Token</h2>
+      <div class="token-row">
+        <input type="password" id="tokenInput" placeholder="Paste your ADMIN_TOKEN here" autocomplete="off" />
+      </div>
+      <p style="font-size:0.8rem;color:#888">Stored in this tab's session only. Re-enter if you reload.</p>
+    </div>
+
+    <div class="card">
+      <h2>Add Seller</h2>
+      <div class="add-row">
+        <input type="text" id="usernameInput" placeholder="PBT username (e.g. happypuppies)" autocomplete="off" />
+        <button class="btn btn-add" onclick="addSeller()">Add</button>
+      </div>
+      <div id="addMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Current Blacklist</h2>
+      <table id="blTable">
+        <thead><tr><th>Username</th><th>Added</th><th></th></tr></thead>
+        <tbody id="blBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function getToken() {
+      return document.getElementById('tokenInput').value.trim();
+    }
+
+    function apiUrl(path) {
+      const t = getToken();
+      return t ? `${path}?token=${encodeURIComponent(t)}` : path;
+    }
+
+    async function loadList() {
+      const tbody = document.getElementById('blBody');
+      try {
+        const res = await fetch(apiUrl('/api/admin/seller-blacklist'));
+        if (res.status === 401) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty">Invalid token.</td></tr>';
+          return;
+        }
+        const data = await res.json();
+        const sellers = data.sellers || [];
+        if (!sellers.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty">No sellers blacklisted yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = sellers.map(s => `
+          <tr>
+            <td><strong>${escHtml(s.username)}</strong></td>
+            <td style="color:#888">${s.added_at ? s.added_at.slice(0, 10) : ''}</td>
+            <td><button class="btn btn-remove" onclick="removeSeller('${escHtml(s.username)}')">Remove</button></td>
+          </tr>
+        `).join('');
+      } catch {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">Failed to load.</td></tr>';
+      }
+    }
+
+    async function addSeller() {
+      const username = document.getElementById('usernameInput').value.trim().toLowerCase();
+      const msgEl = document.getElementById('addMsg');
+      if (!username) { showMsg(msgEl, 'Enter a username.', false); return; }
+      const res = await fetch(apiUrl('/api/admin/seller-blacklist'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(msgEl, `Added "${data.username}". Their listings are now ended.`, true);
+        document.getElementById('usernameInput').value = '';
+        loadList();
+      } else {
+        showMsg(msgEl, data.error || 'Failed.', false);
+      }
+    }
+
+    async function removeSeller(username) {
+      if (!confirm(`Remove "${username}" from blacklist? Their listings won't be restored automatically — they'll reappear on the next sync if still on PBT.`)) return;
+      const res = await fetch(apiUrl(`/api/admin/seller-blacklist/${encodeURIComponent(username)}`), {
+        method: 'DELETE',
+      });
+      if (res.ok) loadList();
+    }
+
+    function showMsg(el, text, ok) {
+      el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
+      el.textContent = text;
+      setTimeout(() => { el.textContent = ''; el.className = ''; }, 4000);
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.getElementById('tokenInput').addEventListener('change', loadList);
+    loadList();
+  </script>
+</body>
+</html>

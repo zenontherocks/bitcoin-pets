@@ -160,6 +160,12 @@ export default {
       return handleApi(request, env, url);
     }
     const response = await env.ASSETS.fetch(request);
+    // Add noindex header to admin pages
+    if (url.pathname === '/sellerblacklist' || url.pathname === '/sellerblacklist.html') {
+      const headers = new Headers(response.headers);
+      headers.set('X-Robots-Tag', 'noindex, nofollow');
+      return new Response(response.body, { status: response.status, headers });
+    }
     if (response.status === 404) {
       const tryUrl = new URL(url.toString());
       if (!tryUrl.pathname.includes('.')) {
@@ -213,6 +219,14 @@ async function handleApi(request, env, url) {
   // Admin
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
     return handleAddressIndex(request, env);
+  }
+  if (url.pathname === '/api/admin/seller-blacklist') {
+    if (request.method === 'GET')  return handleBlacklistGet(request, env, url);
+    if (request.method === 'POST') return handleBlacklistAdd(request, env, url);
+  }
+  const blMatch = url.pathname.match(/^\/api\/admin\/seller-blacklist\/([^/]+)$/);
+  if (blMatch && request.method === 'DELETE') {
+    return handleBlacklistRemove(request, env, url, blMatch[1]);
   }
   return json({ error: 'Not found' }, 404);
 }
@@ -384,6 +398,44 @@ async function handleAddressIndex(request, env) {
   return json({ next_address_index: parseInt(row?.value ?? '0', 10) });
 }
 
+// ── Admin: seller blacklist ───────────────────────────────────────────────────
+
+function checkAdminToken(request, env, url) {
+  const token = env.ADMIN_TOKEN;
+  if (!token) return true; // no secret configured — allow
+  return url.searchParams.get('token') === token;
+}
+
+async function handleBlacklistGet(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const rows = await env.DB.prepare(
+    'SELECT username, added_at FROM seller_blacklist ORDER BY added_at DESC'
+  ).all();
+  return json({ sellers: rows.results || [] });
+}
+
+async function handleBlacklistAdd(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const body = await request.json().catch(() => ({}));
+  const username = (body.username || '').trim().toLowerCase();
+  if (!username) return json({ error: 'username required' }, 400);
+  await env.DB.prepare(
+    "INSERT OR IGNORE INTO seller_blacklist (username) VALUES (?)"
+  ).bind(username).run();
+  // Mark any existing available listings from this seller as ended
+  await env.DB.prepare(
+    "UPDATE pets SET status='ended', updated_at=datetime('now') WHERE pbt_seller=? AND status='available'"
+  ).bind(username).run();
+  return json({ ok: true, username });
+}
+
+async function handleBlacklistRemove(request, env, url, username) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const u = decodeURIComponent(username).toLowerCase();
+  await env.DB.prepare('DELETE FROM seller_blacklist WHERE username=?').bind(u).run();
+  return json({ ok: true, username: u });
+}
+
 // ── Cron: order expiry ────────────────────────────────────────────────────────
 
 async function expireOrders(env) {
@@ -551,26 +603,35 @@ async function syncPbtListings(env) {
     page++;
   }
 
+  // Load seller blacklist
+  const blRows = await env.DB.prepare('SELECT username FROM seller_blacklist').all();
+  const blacklist = new Set((blRows.results || []).map(r => r.username));
+
   // Mark listings no longer on PBT as ended (unless already sold/pending)
+  // Also end any available listings from blacklisted sellers
   const pbtIds = listings.map(l => l.id);
-  if (pbtIds.length > 0) {
-    const existing = await env.DB.prepare(
-      "SELECT pbt_id FROM pets WHERE status = 'available'"
-    ).all();
-    for (const row of (existing.results || [])) {
-      if (!pbtIds.includes(row.pbt_id)) {
-        await env.DB.prepare(
-          "UPDATE pets SET status='ended', updated_at=datetime('now') WHERE pbt_id=?"
-        ).bind(row.pbt_id).run();
-      }
+  const availableRows = await env.DB.prepare(
+    "SELECT pbt_id, pbt_seller FROM pets WHERE status = 'available'"
+  ).all();
+  for (const row of (availableRows.results || [])) {
+    const offPbt = pbtIds.length > 0 && !pbtIds.includes(row.pbt_id);
+    const blacklisted = row.pbt_seller && blacklist.has(row.pbt_seller);
+    if (offPbt || blacklisted) {
+      await env.DB.prepare(
+        "UPDATE pets SET status='ended', updated_at=datetime('now') WHERE pbt_id=?"
+      ).bind(row.pbt_id).run();
     }
   }
 
-  // Fetch existing pbt_ids; also find which have no photos so we can backfill them
-  const existingRows = await env.DB.prepare(
-    "SELECT p.pbt_id FROM pets p LEFT JOIN pet_pictures pp ON pp.pet_id = p.id GROUP BY p.id HAVING COUNT(pp.id) = 0"
-  ).all();
-  const missingPhotoIds = new Set((existingRows.results || []).map(r => r.pbt_id));
+  // Find listings needing a backfill detail scrape: missing photos, breed, gender, or seller
+  const backfillRows = await env.DB.prepare(`
+    SELECT p.pbt_id FROM pets p
+    LEFT JOIN pet_pictures pp ON pp.pet_id = p.id
+    WHERE p.status = 'available'
+    GROUP BY p.id
+    HAVING COUNT(pp.id) = 0 OR p.gender = 'unknown' OR p.breed IS NULL OR p.pbt_seller IS NULL
+  `).all();
+  const backfillIds = new Set((backfillRows.results || []).map(r => r.pbt_id));
 
   const allRows = await env.DB.prepare('SELECT pbt_id FROM pets').all();
   const existingIds = new Set((allRows.results || []).map(r => r.pbt_id));
@@ -585,17 +646,40 @@ async function syncPbtListings(env) {
           ).bind(price_usd, id).run();
         } catch { /* ignore */ }
       }
-      // Re-fetch detail page to backfill missing photos
-      if (missingPhotoIds.has(id)) {
+      // Re-fetch detail page to backfill missing fields/photos
+      if (backfillIds.has(id)) {
         try {
           const detail = await pbtScrapeDetail(cookie, id, slug);
-          if (detail?.images?.length) {
+          if (detail) {
+            // Skip if seller is now blacklisted
+            if (detail.pbt_seller && blacklist.has(detail.pbt_seller)) {
+              await env.DB.prepare(
+                "UPDATE pets SET status='ended', updated_at=datetime('now') WHERE pbt_id=?"
+              ).bind(id).run();
+              continue;
+            }
             const petRow = await env.DB.prepare('SELECT id FROM pets WHERE pbt_id=?').bind(id).first();
             if (petRow) {
-              for (let i = 0; i < detail.images.length; i++) {
-                await env.DB.prepare(
-                  'INSERT OR IGNORE INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
-                ).bind(crypto.randomUUID(), petRow.id, detail.images[i], i === 0 ? 1 : 0).run();
+              // Fill in blanks only — don't overwrite existing values
+              await env.DB.prepare(`
+                UPDATE pets SET
+                  breed      = CASE WHEN breed IS NULL AND ? IS NOT NULL THEN ? ELSE breed END,
+                  gender     = CASE WHEN gender = 'unknown' AND ? != 'unknown' THEN ? ELSE gender END,
+                  pbt_seller = COALESCE(pbt_seller, ?),
+                  updated_at = datetime('now')
+                WHERE id = ?
+              `).bind(
+                detail.breed, detail.breed,
+                detail.gender, detail.gender,
+                detail.pbt_seller,
+                petRow.id
+              ).run();
+              if (detail.images?.length) {
+                for (let i = 0; i < detail.images.length; i++) {
+                  await env.DB.prepare(
+                    'INSERT OR IGNORE INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
+                  ).bind(crypto.randomUUID(), petRow.id, detail.images[i], i === 0 ? 1 : 0).run();
+                }
               }
             }
           }
@@ -606,6 +690,7 @@ async function syncPbtListings(env) {
     try {
       const detail = await pbtScrapeDetail(cookie, id, slug);
       if (!detail) continue;
+      if (detail.pbt_seller && blacklist.has(detail.pbt_seller)) continue;
       await syncPbtListings_upsert(env, detail);
     } catch { /* skip individual failures — will retry next sync */ }
   }
@@ -729,6 +814,10 @@ async function pbtScrapeDetail(cookie, pbtId, slug) {
   }
   const vaccinations = vaccines.length > 0 ? vaccines.join('\n') : null;
 
+  // Seller: extract username from /Member/Profile/{username} link
+  const sellerM = html.match(/href="\/Member\/Profile\/([^"/?]+)"/i);
+  const pbt_seller = sellerM ? sellerM[1].toLowerCase() : null;
+
   return {
     pbt_id: pbtId,
     pbt_url: `https://pbtmarketplace.com/Listing/Details/${pbtId}/${slug}`,
@@ -738,6 +827,7 @@ async function pbtScrapeDetail(cookie, pbtId, slug) {
     price_usd,
     vaccinations,
     images,
+    pbt_seller,
   };
 }
 
@@ -758,13 +848,13 @@ async function syncPbtListings_upsert(env, listing) {
   const id = crypto.randomUUID();
   await env.DB.prepare(`
     INSERT INTO pets (id, pbt_id, pbt_url, name, species, breed, date_of_birth, weight_lbs,
-      gender, color, vaccinations, registry_name, price_usd)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      gender, color, vaccinations, registry_name, price_usd, pbt_seller)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, listing.pbt_id, listing.pbt_url, listing.name, listing.species,
     listing.breed, listing.date_of_birth, listing.weight_lbs,
     listing.gender, listing.color, listing.vaccinations,
-    listing.registry_name, listing.price_usd
+    listing.registry_name, listing.price_usd, listing.pbt_seller || null
   ).run();
 
   for (let i = 0; i < listing.images.length; i++) {
