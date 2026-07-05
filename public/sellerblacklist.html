@@ -65,6 +65,10 @@
   </div>
 
   <script>
+    // Pre-fill token from URL query string so bookmarking ?token=... works
+    const urlToken = new URLSearchParams(location.search).get('token');
+    if (urlToken) document.getElementById('tokenInput').value = urlToken;
+
     function getToken() {
       return document.getElementById('tokenInput').value.trim();
     }
