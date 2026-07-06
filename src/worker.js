@@ -674,7 +674,11 @@ async function syncPbtListings(env) {
                 detail.pbt_seller,
                 petRow.id
               ).run();
-              if (detail.images?.length) {
+              // Only insert photos if this pet currently has none
+              const photoCount = await env.DB.prepare(
+                'SELECT COUNT(*) AS n FROM pet_pictures WHERE pet_id=?'
+              ).bind(petRow.id).first();
+              if ((photoCount?.n ?? 0) === 0 && detail.images?.length) {
                 for (let i = 0; i < detail.images.length; i++) {
                   await env.DB.prepare(
                     'INSERT OR IGNORE INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
