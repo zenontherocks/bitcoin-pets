@@ -234,6 +234,7 @@ async function handleApi(request, env, url) {
 // ── Pet handlers ──────────────────────────────────────────────────────────────
 
 const MARKUP_SATS = 1_000_000; // 1M sats added per listing to cover shipping/expenses
+const MARKUP_USD = 400; // flat USD added per listing on top of the sats markup
 
 async function fetchBtcUsd() {
   const res = await fetch('https://mempool.space/api/v1/prices');
@@ -244,7 +245,7 @@ async function fetchBtcUsd() {
 }
 
 function applyMarkup(price_usd, btcUsd) {
-  return price_usd + (MARKUP_SATS / 1e8) * btcUsd;
+  return price_usd + MARKUP_USD + (MARKUP_SATS / 1e8) * btcUsd;
 }
 
 async function handleListPets(request, env, url) {
@@ -326,11 +327,11 @@ async function handleCreateOrder(request, env, petId) {
     return json({ error: 'Invalid email address' }, 400);
   }
 
-  // Compute BTC amount: convert base USD to sats, then add 1M sats markup
+  // Compute BTC amount: convert (base USD + $400 markup) to sats, then add 1M sats markup
   let amountBtc;
   try {
     const USD = await fetchBtcUsd();
-    const baseSats = Math.round((pet.price_usd / USD) * 1e8);
+    const baseSats = Math.round(((pet.price_usd + MARKUP_USD) / USD) * 1e8);
     amountBtc = (baseSats + MARKUP_SATS) / 1e8;
   } catch {
     return json({ error: 'Could not fetch current BTC price. Please try again.' }, 502);
