@@ -184,7 +184,6 @@
       text-align: center; font-size: 1.6rem; font-weight: 900;
       color: var(--orange); margin-bottom: 1rem;
     }
-    .invoice-amount span { font-size: 1rem; color: var(--gray); font-weight: 600; }
     .qr-wrap { text-align: center; margin-bottom: 1rem; }
     .qr-wrap img { border-radius: 8px; border: 4px solid #f5f5f5; }
     .invoice-addr-box {
@@ -372,11 +371,11 @@
       const secondary = document.getElementById('priceSecondary');
       if (!primary || !secondary) return;
       if (showBtc && btcPriceUsd) {
-        primary.textContent = '≈ ' + formatSats(priceUsd / btcPriceUsd);
+        primary.textContent = '≈ ' + formatBtc(priceUsd / btcPriceUsd);
         secondary.textContent = formatUsd(priceUsd);
       } else {
         primary.textContent = formatUsd(priceUsd);
-        secondary.textContent = btcPriceUsd ? '≈ ' + formatSats(priceUsd / btcPriceUsd) : '';
+        secondary.textContent = btcPriceUsd ? '≈ ' + formatBtc(priceUsd / btcPriceUsd) : '';
       }
     }
 
@@ -580,9 +579,7 @@
 
       showView('invoiceView');
 
-      const sats = Math.round(order.amount_btc * 1e8).toLocaleString('en-US');
-      document.getElementById('invoiceAmount').innerHTML =
-        `${escHtml(formatBtc(order.amount_btc))} <span>${escHtml(sats)} sats</span>`;
+      document.getElementById('invoiceAmount').textContent = formatBtc(order.amount_btc);
       document.getElementById('invoiceAddr').textContent = order.pay_address;
 
       const bip21 = `bitcoin:${order.pay_address}?amount=${order.amount_btc}&label=Bitcoin+Pets`;

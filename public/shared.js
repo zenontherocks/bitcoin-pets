@@ -1,5 +1,5 @@
 // shared.js — Utilities loaded on every page (like navbar.js).
-// Provides: escHtml, formatBtc, formatUsd, formatSats, SPECIES_ICON, footer year.
+// Provides: escHtml, formatBtc, formatUsd, SPECIES_ICON, footer year.
 
 function escHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, function (c) {
@@ -8,17 +8,15 @@ function escHtml(str) {
 }
 
 function formatBtc(n) {
-  var num = parseFloat(n);
+  var num = Number(n);
   if (isNaN(num)) return '\u2014';
-  return num.toLocaleString('en-US', { maximumFractionDigits: 8 }) + ' BTC';
+  var str = num.toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
+  if (str.indexOf('0.') === 0) str = str.slice(1);
+  return '\u20bf' + str;
 }
 
 function formatUsd(n) {
   return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatSats(btc) {
-  return Math.round(Number(btc) * 1e8).toLocaleString('en-US') + ' sats';
 }
 
 function ageFromDob(dob) {
