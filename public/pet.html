@@ -372,11 +372,11 @@
       const secondary = document.getElementById('priceSecondary');
       if (!primary || !secondary) return;
       if (showBtc && btcPriceUsd) {
-        primary.textContent = '≈ ' + formatSats(priceUsd / btcPriceUsd);
+        primary.textContent = formatSats(priceUsd / btcPriceUsd);
         secondary.textContent = formatUsd(priceUsd);
       } else {
         primary.textContent = formatUsd(priceUsd);
-        secondary.textContent = btcPriceUsd ? '≈ ' + formatSats(priceUsd / btcPriceUsd) : '';
+        secondary.textContent = btcPriceUsd ? formatSats(priceUsd / btcPriceUsd) : '';
       }
     }
 
