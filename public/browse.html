@@ -179,11 +179,11 @@
         const sub = card.querySelector('.pet-price-sub');
         if (!primary || !sub) return;
         if (showBtc && btcPriceUsd && usd) {
-          primary.textContent = '≈ ' + formatBtc(usd / btcPriceUsd);
+          primary.textContent = formatBtc(usd / btcPriceUsd);
           sub.textContent = formatUsd(usd);
         } else {
           primary.textContent = formatUsd(usd);
-          sub.textContent = (btcPriceUsd && usd) ? '≈ ' + formatBtc(usd / btcPriceUsd) : '';
+          sub.textContent = (btcPriceUsd && usd) ? formatBtc(usd / btcPriceUsd) : '';
         }
       });
     }
