@@ -228,6 +228,9 @@ async function handleApi(request, env, url) {
   if (blMatch && request.method === 'DELETE') {
     return handleBlacklistRemove(request, env, url, blMatch[1]);
   }
+  if (url.pathname === '/api/admin/pbt-debug' && request.method === 'GET') {
+    return handlePbtDebug(request, env, url);
+  }
   return json({ error: 'Not found' }, 404);
 }
 
@@ -435,6 +438,33 @@ async function handleBlacklistRemove(request, env, url, username) {
   const u = decodeURIComponent(username).toLowerCase();
   await env.DB.prepare('DELETE FROM seller_blacklist WHERE username=?').bind(u).run();
   return json({ ok: true, username: u });
+}
+
+// TEMPORARY debug route — re-fetches one PBT listing's raw detail HTML and
+// returns snippets around "sex" so we can see the real markup. Remove once
+// the sex-field extraction bug is diagnosed.
+async function handlePbtDebug(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const pbtId = url.searchParams.get('pbt_id');
+  if (!pbtId) return json({ error: 'pbt_id required' }, 400);
+
+  const pet = await env.DB.prepare('SELECT pbt_url FROM pets WHERE pbt_id = ?').bind(pbtId).first();
+  if (!pet?.pbt_url) return json({ error: 'Unknown pbt_id' }, 404);
+
+  const cookie = await pbtLogin(env);
+  if (!cookie) return json({ error: 'PBT login failed' }, 502);
+
+  const r = await fetch(pet.pbt_url, { headers: { Cookie: cookie } });
+  if (!r.ok) return json({ error: `Fetch failed: ${r.status}` }, 502);
+  const html = await r.text();
+
+  const snippets = [];
+  const re = /sex/gi;
+  let m;
+  while ((m = re.exec(html)) !== null && snippets.length < 10) {
+    snippets.push(html.slice(Math.max(0, m.index - 250), m.index + 100));
+  }
+  return json({ pbt_url: pet.pbt_url, html_length: html.length, snippets });
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
