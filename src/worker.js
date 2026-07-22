@@ -231,6 +231,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/pbt-debug' && request.method === 'GET') {
     return handlePbtDebug(request, env, url);
   }
+  if (url.pathname === '/api/admin/pbt-sync-now' && request.method === 'GET') {
+    return handlePbtSyncNow(request, env, url);
+  }
   return json({ error: 'Not found' }, 404);
 }
 
@@ -441,8 +444,8 @@ async function handleBlacklistRemove(request, env, url, username) {
 }
 
 // TEMPORARY debug route — re-fetches one PBT listing's raw detail HTML and
-// returns snippets around "sex" so we can see the real markup. Remove once
-// the sex-field extraction bug is diagnosed.
+// returns snippets around "sex" plus <img> tags, so we can see the real
+// markup for both the sex-field and photo-scraping bugs. Remove once fixed.
 async function handlePbtDebug(request, env, url) {
   if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
   const pbtId = url.searchParams.get('pbt_id');
@@ -458,13 +461,31 @@ async function handlePbtDebug(request, env, url) {
   if (!r.ok) return json({ error: `Fetch failed: ${r.status}` }, 502);
   const html = await r.text();
 
-  const snippets = [];
-  const re = /sex/gi;
-  let m;
-  while ((m = re.exec(html)) !== null && snippets.length < 10) {
-    snippets.push(html.slice(Math.max(0, m.index - 250), m.index + 100));
+  const sexSnippets = [];
+  const sexRe = /sex/gi;
+  let sm;
+  while ((sm = sexRe.exec(html)) !== null && sexSnippets.length < 10) {
+    sexSnippets.push(html.slice(Math.max(0, sm.index - 250), sm.index + 100));
   }
-  return json({ pbt_url: pet.pbt_url, html_length: html.length, snippets });
+
+  const imgTags = [];
+  const imgRe = /<img\b[^>]*>/gi;
+  let im;
+  while ((im = imgRe.exec(html)) !== null && imgTags.length < 15) {
+    imgTags.push(im[0]);
+  }
+
+  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags });
+}
+
+// TEMPORARY debug route — runs the PBT sync immediately (instead of waiting
+// for the */30 cron) and returns its stats, to check whether it's running
+// out of subrequests/time before reaching every listing that needs backfill.
+// Remove alongside handlePbtDebug once diagnosed.
+async function handlePbtSyncNow(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const stats = await syncPbtListings(env);
+  return json({ stats });
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
@@ -614,10 +635,18 @@ async function confirmPayments(env) {
 // ── Cron: PBT listing sync ────────────────────────────────────────────────────
 
 async function syncPbtListings(env) {
-  if (!env.PBT_EMAIL || !env.PBT_PASSWORD) return; // secrets not configured
+  // TEMPORARY: stats tracking for diagnosing why backfill isn't reaching
+  // all listings. Remove alongside the pbt-debug/pbt-sync-now routes once
+  // the missing-sex/missing-photos issue is confirmed fixed.
+  const stats = {
+    pages: 0, listings_found: 0, backfill_candidates: 0,
+    backfill_attempted: 0, backfill_ok: 0, backfill_err: 0, new_inserted: 0,
+  };
+
+  if (!env.PBT_EMAIL || !env.PBT_PASSWORD) { stats.error = 'PBT secrets not configured'; return stats; }
 
   const cookie = await pbtLogin(env);
-  if (!cookie) return;
+  if (!cookie) { stats.error = 'PBT login failed'; return stats; }
 
   // Collect all listing IDs from browse pages
   const seen = new Set();
@@ -625,6 +654,7 @@ async function syncPbtListings(env) {
   let page = 1;
   while (true) {
     const pageListings = await pbtScrapeBrowse(cookie, page);
+    stats.pages++;
     if (pageListings.length === 0) break;
     for (const l of pageListings) {
       if (!seen.has(l.id)) { seen.add(l.id); listings.push(l); }
@@ -633,6 +663,7 @@ async function syncPbtListings(env) {
     if (page >= 100) break;
     page++;
   }
+  stats.listings_found = listings.length;
 
   // Load seller blacklist
   const blRows = await env.DB.prepare('SELECT username FROM seller_blacklist').all();
@@ -663,6 +694,7 @@ async function syncPbtListings(env) {
     HAVING COUNT(pp.id) = 0 OR p.gender = 'unknown' OR p.breed IS NULL OR p.pbt_seller IS NULL
   `).all();
   const backfillIds = new Set((backfillRows.results || []).map(r => r.pbt_id));
+  stats.backfill_candidates = backfillIds.size;
 
   const allRows = await env.DB.prepare('SELECT pbt_id FROM pets').all();
   const existingIds = new Set((allRows.results || []).map(r => r.pbt_id));
@@ -679,9 +711,11 @@ async function syncPbtListings(env) {
       }
       // Re-fetch detail page to backfill missing fields/photos
       if (backfillIds.has(id)) {
+        stats.backfill_attempted++;
         try {
           const detail = await pbtScrapeDetail(cookie, id, slug);
           if (detail) {
+            stats.backfill_ok++;
             // Skip if seller is now blacklisted
             if (detail.pbt_seller && blacklist.has(detail.pbt_seller)) {
               await env.DB.prepare(
@@ -717,8 +751,10 @@ async function syncPbtListings(env) {
                 }
               }
             }
+          } else {
+            stats.backfill_err++;
           }
-        } catch { /* ignore */ }
+        } catch { stats.backfill_err++; }
       }
       continue;
     }
@@ -727,8 +763,11 @@ async function syncPbtListings(env) {
       if (!detail) continue;
       if (detail.pbt_seller && blacklist.has(detail.pbt_seller)) continue;
       await syncPbtListings_upsert(env, detail);
+      stats.new_inserted++;
     } catch { /* skip individual failures — will retry next sync */ }
   }
+
+  return stats;
 }
 
 async function pbtLogin(env) {
