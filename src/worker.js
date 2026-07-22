@@ -641,6 +641,7 @@ async function syncPbtListings(env) {
   const stats = {
     pages: 0, listings_found: 0, backfill_candidates: 0,
     backfill_attempted: 0, backfill_ok: 0, backfill_err: 0, new_inserted: 0,
+    backfill_err_samples: [],
   };
 
   if (!env.PBT_EMAIL || !env.PBT_PASSWORD) { stats.error = 'PBT secrets not configured'; return stats; }
@@ -713,7 +714,7 @@ async function syncPbtListings(env) {
       if (backfillIds.has(id)) {
         stats.backfill_attempted++;
         try {
-          const detail = await pbtScrapeDetail(cookie, id, slug);
+          const detail = await pbtScrapeDetail(cookie, id, slug, stats.backfill_err_samples);
           if (detail) {
             stats.backfill_ok++;
             // Skip if seller is now blacklisted
@@ -754,7 +755,12 @@ async function syncPbtListings(env) {
           } else {
             stats.backfill_err++;
           }
-        } catch { stats.backfill_err++; }
+        } catch (e) {
+          stats.backfill_err++;
+          if (stats.backfill_err_samples.length < 8) {
+            stats.backfill_err_samples.push({ exception: String(e).slice(0, 150) });
+          }
+        }
       }
       continue;
     }
@@ -817,12 +823,18 @@ async function pbtScrapeBrowse(cookie, page) {
   } catch { return []; }
 }
 
-async function pbtScrapeDetail(cookie, pbtId, slug) {
+async function pbtScrapeDetail(cookie, pbtId, slug, errBag) {
   const r = await fetch(
     `https://pbtmarketplace.com/Listing/Details/${pbtId}/${slug}`,
     { headers: { Cookie: cookie } }
   );
-  if (!r.ok) return null;
+  if (!r.ok) {
+    if (errBag && errBag.length < 8) {
+      const body = await r.text().catch(() => '');
+      errBag.push({ status: r.status, preview: body.slice(0, 150) });
+    }
+    return null;
+  }
   const html = await r.text();
 
   // Helper: extract text content from first element with a given class.
@@ -841,9 +853,15 @@ async function pbtScrapeDetail(cookie, pbtId, slug) {
 
   // Price: use buy-now price from data-price attribute (the fixed sale price)
   const priceMatch = html.match(/data-price="([\d.]+)"/);
-  if (!priceMatch) return null; // can't list without a price
+  if (!priceMatch) {
+    if (errBag && errBag.length < 8) errBag.push({ status: r.status, reason: 'no_price', preview: html.slice(0, 150) });
+    return null; // can't list without a price
+  }
   const price_usd = parseFloat(priceMatch[1]);
-  if (!price_usd || price_usd <= 0) return null;
+  if (!price_usd || price_usd <= 0) {
+    if (errBag && errBag.length < 8) errBag.push({ status: r.status, reason: 'bad_price' });
+    return null;
+  }
 
   const ageStr    = extract('listing-details-age');
   const breedRaw  = extract('listing-details-breed');
