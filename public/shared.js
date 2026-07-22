@@ -23,12 +23,12 @@ function ageFromDob(dob) {
   if (!dob) return null;
   var birth = new Date(dob);
   var now = new Date();
-  var years = now.getFullYear() - birth.getFullYear();
-  var months = now.getMonth() - birth.getMonth();
-  if (months < 0) { years--; months += 12; }
-  if (years > 0) return years + ' yr' + (years > 1 ? 's' : '') + (months > 0 ? ', ' + months + ' mo' : '');
-  if (months > 0) return months + ' month' + (months > 1 ? 's' : '');
-  return 'Less than 1 month';
+  var days = Math.max(0, Math.floor((now - birth) / 86400000));
+  var years = Math.floor(days / 365);
+  var weeks = Math.floor((days % 365) / 7);
+  if (years > 0) return years + ' yr' + (years > 1 ? 's' : '') + (weeks > 0 ? ', ' + weeks + ' wk' + (weeks > 1 ? 's' : '') : '');
+  if (weeks > 0) return weeks + ' week' + (weeks > 1 ? 's' : '');
+  return 'Less than 1 week';
 }
 
 var SPECIES_ICON = {
