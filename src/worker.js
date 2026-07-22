@@ -441,8 +441,8 @@ async function handleBlacklistRemove(request, env, url, username) {
 }
 
 // TEMPORARY debug route — re-fetches one PBT listing's raw detail HTML and
-// returns snippets around "sex" so we can see the real markup. Remove once
-// the sex-field extraction bug is diagnosed.
+// returns snippets around "sex" plus <img> tags, so we can see the real
+// markup for both the sex-field and photo-scraping bugs. Remove once fixed.
 async function handlePbtDebug(request, env, url) {
   if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
   const pbtId = url.searchParams.get('pbt_id');
@@ -458,13 +458,21 @@ async function handlePbtDebug(request, env, url) {
   if (!r.ok) return json({ error: `Fetch failed: ${r.status}` }, 502);
   const html = await r.text();
 
-  const snippets = [];
-  const re = /sex/gi;
-  let m;
-  while ((m = re.exec(html)) !== null && snippets.length < 10) {
-    snippets.push(html.slice(Math.max(0, m.index - 250), m.index + 100));
+  const sexSnippets = [];
+  const sexRe = /sex/gi;
+  let sm;
+  while ((sm = sexRe.exec(html)) !== null && sexSnippets.length < 10) {
+    sexSnippets.push(html.slice(Math.max(0, sm.index - 250), sm.index + 100));
   }
-  return json({ pbt_url: pet.pbt_url, html_length: html.length, snippets });
+
+  const imgTags = [];
+  const imgRe = /<img\b[^>]*>/gi;
+  let im;
+  while ((im = imgRe.exec(html)) !== null && imgTags.length < 15) {
+    imgTags.push(im[0]);
+  }
+
+  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags });
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
