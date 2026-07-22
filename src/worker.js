@@ -756,10 +756,18 @@ async function pbtScrapeDetail(cookie, pbtId, slug) {
   if (!r.ok) return null;
   const html = await r.text();
 
-  // Helper: extract text content from first element with a given class
+  // Helper: extract text content from first element with a given class.
+  // Tolerant of extra classes on the element and nested markup (icons, links)
+  // inside the value, since not every field is a bare text node.
   function extract(cls) {
-    const m = html.match(new RegExp(`class="${cls}"[^>]*>\\s*([^<]+)\\s*<`, 'i'));
-    return m ? m[1].trim() : null;
+    const openMatch = html.match(new RegExp(`<(\\w+)[^>]*\\bclass="[^"]*\\b${cls}\\b[^"]*"[^>]*>`, 'i'));
+    if (!openMatch) return null;
+    const tag = openMatch[1];
+    const rest = html.slice(openMatch.index + openMatch[0].length);
+    const closeMatch = rest.match(new RegExp(`<\\/${tag}>`, 'i'));
+    const inner = closeMatch ? rest.slice(0, closeMatch.index) : rest.slice(0, 300);
+    const text = inner.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return text || null;
   }
 
   // Price: use buy-now price from data-price attribute (the fixed sale price)
