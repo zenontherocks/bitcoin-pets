@@ -505,7 +505,7 @@ async function expireOrders(env) {
 
 // ── Email (Resend) ────────────────────────────────────────────────────────────
 
-async function sendEmail(env, { to, subject, html }) {
+async function sendEmail(env, { to, subject, html, replyTo }) {
   if (!env.BREVO_API_KEY) return;
   const senderEmail = env.BREVO_SENDER_EMAIL || 'orders@bitcoin-pets.com';
   const senderName  = env.BREVO_SENDER_NAME  || 'Bitcoin Pets';
@@ -521,6 +521,7 @@ async function sendEmail(env, { to, subject, html }) {
         to: [{ email: to }],
         subject,
         htmlContent: html,
+        ...(replyTo ? { replyTo: { email: replyTo } } : {}),
       }),
     });
   } catch { /* email is best-effort; never block order processing */ }
@@ -552,7 +553,7 @@ async function sendOrderPaidEmails(env, orderId, txId) {
        ${escapeHtml(addressLine)}<br>
        ${escapeHtml(order.buyer_city)}, ${escapeHtml(order.buyer_state)} ${escapeHtml(order.buyer_zip)}<br>
        ${escapeHtml(order.buyer_country)}</p>
-    <p>We'll be in touch with delivery updates. Thanks for choosing Bitcoin Pets!</p>
+    <p>We'll be in touch with delivery updates. In the meantime you can reach us by phone at 970-680-3738. Thanks for choosing Bitcoin Pets!</p>
   `;
 
   const adminHtml = `
@@ -583,9 +584,10 @@ async function sendOrderPaidEmails(env, orderId, txId) {
     to: order.buyer_email,
     subject: `Your Bitcoin Pets order is confirmed — ${order.pet_name}`,
     html: buyerHtml,
+    replyTo: 'btcpets@gmail.com',
   });
   await sendEmail(env, {
-    to: 'zenontherocks@gmail.com',
+    to: 'btcpets@gmail.com',
     subject: `New paid order — ${order.pet_name} ($${order.price_usd.toFixed(2)})`,
     html: adminHtml,
   });
