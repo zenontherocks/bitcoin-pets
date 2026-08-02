@@ -475,7 +475,21 @@ async function handlePbtDebug(request, env, url) {
     imgTags.push(im[0]);
   }
 
-  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags });
+  const dewormSnippets = [];
+  const dewormRe = /deworm/gi;
+  let dm;
+  while ((dm = dewormRe.exec(html)) !== null && dewormSnippets.length < 10) {
+    dewormSnippets.push(html.slice(Math.max(0, dm.index - 250), dm.index + 150));
+  }
+
+  const vaccineSnippets = [];
+  const vaccineRe = /vaccin/gi;
+  let vm;
+  while ((vm = vaccineRe.exec(html)) !== null && vaccineSnippets.length < 10) {
+    vaccineSnippets.push(html.slice(Math.max(0, vm.index - 250), vm.index + 150));
+  }
+
+  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags, dewormSnippets, vaccineSnippets });
 }
 
 // TEMPORARY debug route — runs the PBT sync immediately (instead of waiting
