@@ -264,23 +264,29 @@ async function handleListPets(request, env, url) {
   const binds = species
     ? [species, limit + 1, offset]
     : [limit + 1, offset];
+  const countBinds = species ? [species] : [];
 
-  const rows = await env.DB.prepare(`
-    SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_usd, p.created_at,
-           p.date_of_birth, p.weight_lbs,
-           pp.url AS photo_url
-    FROM pets p
-    LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
-    WHERE p.status = 'available' ${speciesFilter}
-    ORDER BY p.created_at DESC
-    LIMIT ? OFFSET ?
-  `).bind(...binds).all();
+  const [rows, countRow] = await Promise.all([
+    env.DB.prepare(`
+      SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_usd, p.created_at,
+             p.date_of_birth, p.weight_lbs,
+             pp.url AS photo_url
+      FROM pets p
+      LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
+      WHERE p.status = 'available' ${speciesFilter}
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(...binds).all(),
+    env.DB.prepare(`
+      SELECT COUNT(*) AS total FROM pets p WHERE p.status = 'available' ${speciesFilter}
+    `).bind(...countBinds).first(),
+  ]);
 
   let btcUsd = 0;
   try { btcUsd = await fetchBtcUsd(); } catch { /* show base price if fetch fails */ }
   const pets = (rows.results || []).map(p => ({ ...p, price_usd: btcUsd ? applyMarkup(p.price_usd, btcUsd) : p.price_usd }));
   const hasMore = pets.length > limit;
-  return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page });
+  return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page, total: countRow?.total ?? 0 });
 }
 
 async function handleGetPet(request, env, id) {
