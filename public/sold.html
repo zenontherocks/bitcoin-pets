@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Sold Pets — Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f4f4; color: #1a1a1a; padding: 2rem 1rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .subtitle { font-size: 0.875rem; color: #666; margin-bottom: 2rem; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem; margin-bottom: 1.5rem; }
+    h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .token-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .token-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-size: 0.85rem; font-family: monospace; }
+    .token-row input:focus { outline: none; border-color: #f7931a; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid #f0f0f0; font-size: 0.875rem; }
+    th { color: #666; font-weight: 600; }
+    .empty { color: #999; font-size: 0.875rem; padding: 0.75rem 0.5rem; }
+    .btn { padding: 0.4rem 0.9rem; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; display: inline-block; }
+    .btn-waybill { background: #f7931a; color: #fff; }
+    .btn-waybill:hover { background: #d97b0e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Sold Pets</h1>
+    <p class="subtitle">All paid orders, permanently kept. Print shipping paperwork from here.</p>
+
+    <div class="card">
+      <h2>Admin Token</h2>
+      <div class="token-row">
+        <input type="password" id="tokenInput" placeholder="Paste your ADMIN_TOKEN here" autocomplete="off" />
+      </div>
+      <p style="font-size:0.8rem;color:#888">Stored in this tab's session only. Re-enter if you reload.</p>
+    </div>
+
+    <div class="card">
+      <h2>Orders</h2>
+      <table id="ordersTable">
+        <thead><tr><th>Pet</th><th>Breed</th><th>Buyer</th><th>Ship To</th><th>Paid</th><th>BTC</th><th></th></tr></thead>
+        <tbody id="ordersBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Pre-fill token from URL query string so bookmarking ?token=... works
+    const urlToken = new URLSearchParams(location.search).get('token');
+    if (urlToken) document.getElementById('tokenInput').value = urlToken;
+
+    function getToken() {
+      return document.getElementById('tokenInput').value.trim();
+    }
+
+    function apiUrl(path) {
+      const t = getToken();
+      return t ? `${path}?token=${encodeURIComponent(t)}` : path;
+    }
+
+    function waybillUrl(orderId) {
+      const t = getToken();
+      return `/waybill?order_id=${encodeURIComponent(orderId)}` + (t ? `&token=${encodeURIComponent(t)}` : '');
+    }
+
+    async function loadOrders() {
+      const tbody = document.getElementById('ordersBody');
+      try {
+        const res = await fetch(apiUrl('/api/admin/orders'));
+        if (res.status === 401) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty">Invalid token.</td></tr>';
+          return;
+        }
+        const data = await res.json();
+        const orders = data.orders || [];
+        if (!orders.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty">No paid orders yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = orders.map(o => `
+          <tr>
+            <td><strong>${escHtml(o.pet_name)}</strong></td>
+            <td>${escHtml(o.breed || '—')}</td>
+            <td>${escHtml(o.buyer_name)}</td>
+            <td>${escHtml(o.buyer_city)}, ${escHtml(o.buyer_state)}</td>
+            <td style="color:#888">${o.paid_at ? o.paid_at.slice(0, 10) : ''}</td>
+            <td>${o.amount_btc ?? ''}</td>
+            <td><a class="btn btn-waybill" href="${waybillUrl(o.order_id)}">Waybill</a></td>
+          </tr>
+        `).join('');
+      } catch {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">Failed to load.</td></tr>';
+      }
+    }
+
+    function escHtml(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.getElementById('tokenInput').addEventListener('change', loadOrders);
+    loadOrders();
+  </script>
+</body>
+</html>
