@@ -161,7 +161,8 @@ export default {
     }
     const response = await env.ASSETS.fetch(request);
     // Add noindex header to admin pages
-    if (url.pathname === '/sellerblacklist' || url.pathname === '/sellerblacklist.html') {
+    const ADMIN_PAGES = ['/sellerblacklist', '/sellerblacklist.html', '/sold', '/sold.html', '/waybill', '/waybill.html'];
+    if (ADMIN_PAGES.includes(url.pathname)) {
       const headers = new Headers(response.headers);
       headers.set('X-Robots-Tag', 'noindex, nofollow');
       return new Response(response.body, { status: response.status, headers });
@@ -233,6 +234,13 @@ async function handleApi(request, env, url) {
   }
   if (url.pathname === '/api/admin/pbt-sync-now' && request.method === 'GET') {
     return handlePbtSyncNow(request, env, url);
+  }
+  if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
+    return handleAdminOrders(request, env, url);
+  }
+  const adminOrderMatch = url.pathname.match(/^\/api\/admin\/orders\/([a-zA-Z0-9-]+)$/);
+  if (adminOrderMatch && request.method === 'GET') {
+    return handleAdminOrderDetail(request, env, url, adminOrderMatch[1]);
   }
   return json({ error: 'Not found' }, 404);
 }
@@ -447,6 +455,34 @@ async function handleBlacklistRemove(request, env, url, username) {
   const u = decodeURIComponent(username).toLowerCase();
   await env.DB.prepare('DELETE FROM seller_blacklist WHERE username=?').bind(u).run();
   return json({ ok: true, username: u });
+}
+
+// ── Admin: sold orders & waybills ───────────────────────────────────────────
+
+async function handleAdminOrders(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const rows = await env.DB.prepare(`
+    SELECT o.id AS order_id, o.paid_at, o.tx_id, o.amount_btc, o.buyer_name, o.buyer_city, o.buyer_state,
+           p.id AS pet_id, p.name AS pet_name, p.breed, p.pbt_id
+    FROM orders o JOIN pets p ON p.id = o.pet_id
+    WHERE o.status = 'paid'
+    ORDER BY o.paid_at DESC
+  `).all();
+  return json({ orders: rows.results || [] });
+}
+
+async function handleAdminOrderDetail(request, env, url, orderId) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const row = await env.DB.prepare(`
+    SELECT o.id AS order_id, o.paid_at, o.tx_id, o.amount_btc,
+           o.buyer_name, o.buyer_email, o.buyer_phone,
+           o.buyer_address1, o.buyer_address2, o.buyer_city, o.buyer_state, o.buyer_zip, o.buyer_country,
+           p.id AS pet_id, p.name AS pet_name, p.breed, p.pbt_id, p.microchip_id
+    FROM orders o JOIN pets p ON p.id = o.pet_id
+    WHERE o.id = ? AND o.status = 'paid'
+  `).bind(orderId).first();
+  if (!row) return json({ error: 'Not found' }, 404);
+  return json({ order: row });
 }
 
 // TEMPORARY debug route — re-fetches one PBT listing's raw detail HTML and
@@ -751,15 +787,17 @@ async function syncPbtListings(env) {
               // Fill in blanks only — don't overwrite existing values
               await env.DB.prepare(`
                 UPDATE pets SET
-                  breed      = CASE WHEN breed IS NULL AND ? IS NOT NULL THEN ? ELSE breed END,
-                  gender     = CASE WHEN gender = 'unknown' AND ? != 'unknown' THEN ? ELSE gender END,
-                  pbt_seller = COALESCE(pbt_seller, ?),
-                  updated_at = datetime('now')
+                  breed         = CASE WHEN breed IS NULL AND ? IS NOT NULL THEN ? ELSE breed END,
+                  gender        = CASE WHEN gender = 'unknown' AND ? != 'unknown' THEN ? ELSE gender END,
+                  pbt_seller    = COALESCE(pbt_seller, ?),
+                  microchip_id  = COALESCE(microchip_id, ?),
+                  updated_at    = datetime('now')
                 WHERE id = ?
               `).bind(
                 detail.breed, detail.breed,
                 detail.gender, detail.gender,
                 detail.pbt_seller,
+                detail.microchip_id,
                 petRow.id
               ).run();
               // Only insert photos if this pet currently has none
@@ -891,6 +929,10 @@ async function pbtScrapeDetail(cookie, pbtId, slug, errBag) {
   const registry  = extract('listing-details-registry');
   const weightStr = extract('listing-details-weight');
   const color     = extract('listing-details-color');
+  // Best-effort — class name unconfirmed against real markup; harmless if
+  // wrong, just leaves microchip_id null like it already is today.
+  const microchipRaw = extract('listing-details-microchip');
+  const microchip_id = microchipRaw && !microchipRaw.includes('Unlisted') ? microchipRaw : null;
 
   // Gender: from class content, fall back to slug
   const sexRaw = extract('listing-details-sex');
@@ -946,6 +988,7 @@ async function pbtScrapeDetail(cookie, pbtId, slug, errBag) {
     name, species, breed, gender, color,
     date_of_birth, weight_lbs,
     registry_name: registry || null,
+    microchip_id,
     price_usd,
     vaccinations,
     images,
@@ -970,13 +1013,13 @@ async function syncPbtListings_upsert(env, listing) {
   const id = crypto.randomUUID();
   await env.DB.prepare(`
     INSERT INTO pets (id, pbt_id, pbt_url, name, species, breed, date_of_birth, weight_lbs,
-      gender, color, vaccinations, registry_name, price_usd, pbt_seller)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      gender, color, vaccinations, registry_name, microchip_id, price_usd, pbt_seller)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, listing.pbt_id, listing.pbt_url, listing.name, listing.species,
     listing.breed, listing.date_of_birth, listing.weight_lbs,
     listing.gender, listing.color, listing.vaccinations,
-    listing.registry_name, listing.price_usd, listing.pbt_seller || null
+    listing.registry_name, listing.microchip_id, listing.price_usd, listing.pbt_seller || null
   ).run();
 
   for (let i = 0; i < listing.images.length; i++) {
