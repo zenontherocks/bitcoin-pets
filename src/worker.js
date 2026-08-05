@@ -19,7 +19,11 @@ function b58decode(s) {
     if (d < 0) throw new Error('Invalid base58 char: ' + c);
     n = n * 58n + BigInt(d);
   }
-  const hex = n.toString(16).padStart(50, '0');
+  // n.toString(16) omits any insignificant leading zero *nibble* (not just
+  // whole zero bytes), so an odd-length result silently drops one hex digit
+  // off the front once split into byte pairs below — pad it back to even.
+  let hex = n.toString(16);
+  if (hex.length % 2 !== 0) hex = '0' + hex;
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   // prepend leading-zero bytes encoded as '1's
