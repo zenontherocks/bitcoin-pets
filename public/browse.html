@@ -162,7 +162,6 @@
     const loadMoreBtn  = document.getElementById('loadMoreBtn');
 
     let currentPage = 1;
-    let totalShown  = 0;
     let loading     = false;
     let btcPriceUsd = null;
 
@@ -242,7 +241,6 @@
         grid.innerHTML = '';
         stateBox.style.display = 'none';
         loadMoreWrap.style.display = 'none';
-        totalShown = 0;
         currentPage = 1;
       }
 
@@ -253,7 +251,6 @@
         if (!res.ok) throw new Error(data.error || 'Failed to load');
 
         const pets = data.pets || [];
-        totalShown += pets.length;
 
         if (pets.length === 0 && !append) {
           stateBox.innerHTML = '<p>No listings available right now. Check back soon!</p>';
@@ -261,9 +258,7 @@
         } else {
           pets.forEach(pet => grid.appendChild(renderCard(pet)));
           refreshPriceDisplay();
-          countEl.textContent =
-            totalShown + (data.hasMore ? '+' : '') +
-            ' listing' + (totalShown === 1 ? '' : 's');
+          countEl.textContent = data.total + ' listing' + (data.total === 1 ? '' : 's');
         }
 
         if (data.hasMore) {

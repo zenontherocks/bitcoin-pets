@@ -35,8 +35,9 @@
   window.BP_CURRENCY = localStorage.getItem('bp_currency') || 'btc';
 
   // Theme preference stored in localStorage; applied immediately (before
-  // DOMContentLoaded) so the page never flashes the light theme first.
-  window.BP_THEME = localStorage.getItem('bp_theme') || 'light';
+  // DOMContentLoaded) so the page never flashes the wrong theme first.
+  // Defaults to dark for first-time visitors who haven't set a preference.
+  window.BP_THEME = localStorage.getItem('bp_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', window.BP_THEME);
 
   function setCurrency(c) {

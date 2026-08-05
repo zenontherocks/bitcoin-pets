@@ -161,7 +161,8 @@ export default {
     }
     const response = await env.ASSETS.fetch(request);
     // Add noindex header to admin pages
-    if (url.pathname === '/sellerblacklist' || url.pathname === '/sellerblacklist.html') {
+    const ADMIN_PAGES = ['/sellerblacklist', '/sellerblacklist.html', '/sold', '/sold.html', '/waybill', '/waybill.html'];
+    if (ADMIN_PAGES.includes(url.pathname)) {
       const headers = new Headers(response.headers);
       headers.set('X-Robots-Tag', 'noindex, nofollow');
       return new Response(response.body, { status: response.status, headers });
@@ -234,6 +235,13 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/pbt-sync-now' && request.method === 'GET') {
     return handlePbtSyncNow(request, env, url);
   }
+  if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
+    return handleAdminOrders(request, env, url);
+  }
+  const adminOrderMatch = url.pathname.match(/^\/api\/admin\/orders\/([a-zA-Z0-9-]+)$/);
+  if (adminOrderMatch && request.method === 'GET') {
+    return handleAdminOrderDetail(request, env, url, adminOrderMatch[1]);
+  }
   return json({ error: 'Not found' }, 404);
 }
 
@@ -264,23 +272,29 @@ async function handleListPets(request, env, url) {
   const binds = species
     ? [species, limit + 1, offset]
     : [limit + 1, offset];
+  const countBinds = species ? [species] : [];
 
-  const rows = await env.DB.prepare(`
-    SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_usd, p.created_at,
-           p.date_of_birth, p.weight_lbs,
-           pp.url AS photo_url
-    FROM pets p
-    LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
-    WHERE p.status = 'available' ${speciesFilter}
-    ORDER BY p.created_at DESC
-    LIMIT ? OFFSET ?
-  `).bind(...binds).all();
+  const [rows, countRow] = await Promise.all([
+    env.DB.prepare(`
+      SELECT p.id, p.name, p.species, p.breed, p.gender, p.price_usd, p.created_at,
+             p.date_of_birth, p.weight_lbs,
+             pp.url AS photo_url
+      FROM pets p
+      LEFT JOIN pet_pictures pp ON pp.pet_id = p.id AND pp.is_primary = 1
+      WHERE p.status = 'available' ${speciesFilter}
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(...binds).all(),
+    env.DB.prepare(`
+      SELECT COUNT(*) AS total FROM pets p WHERE p.status = 'available' ${speciesFilter}
+    `).bind(...countBinds).first(),
+  ]);
 
   let btcUsd = 0;
   try { btcUsd = await fetchBtcUsd(); } catch { /* show base price if fetch fails */ }
   const pets = (rows.results || []).map(p => ({ ...p, price_usd: btcUsd ? applyMarkup(p.price_usd, btcUsd) : p.price_usd }));
   const hasMore = pets.length > limit;
-  return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page });
+  return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page, total: countRow?.total ?? 0 });
 }
 
 async function handleGetPet(request, env, id) {
@@ -443,6 +457,34 @@ async function handleBlacklistRemove(request, env, url, username) {
   return json({ ok: true, username: u });
 }
 
+// ── Admin: sold orders & waybills ───────────────────────────────────────────
+
+async function handleAdminOrders(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const rows = await env.DB.prepare(`
+    SELECT o.id AS order_id, o.paid_at, o.tx_id, o.amount_btc, o.buyer_name, o.buyer_city, o.buyer_state,
+           p.id AS pet_id, p.name AS pet_name, p.breed, p.pbt_id
+    FROM orders o JOIN pets p ON p.id = o.pet_id
+    WHERE o.status = 'paid'
+    ORDER BY o.paid_at DESC
+  `).all();
+  return json({ orders: rows.results || [] });
+}
+
+async function handleAdminOrderDetail(request, env, url, orderId) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const row = await env.DB.prepare(`
+    SELECT o.id AS order_id, o.paid_at, o.tx_id, o.amount_btc,
+           o.buyer_name, o.buyer_email, o.buyer_phone,
+           o.buyer_address1, o.buyer_address2, o.buyer_city, o.buyer_state, o.buyer_zip, o.buyer_country,
+           p.id AS pet_id, p.name AS pet_name, p.breed, p.pbt_id, p.microchip_id
+    FROM orders o JOIN pets p ON p.id = o.pet_id
+    WHERE o.id = ? AND o.status = 'paid'
+  `).bind(orderId).first();
+  if (!row) return json({ error: 'Not found' }, 404);
+  return json({ order: row });
+}
+
 // TEMPORARY debug route — re-fetches one PBT listing's raw detail HTML and
 // returns snippets around "sex" plus <img> tags, so we can see the real
 // markup for both the sex-field and photo-scraping bugs. Remove once fixed.
@@ -475,7 +517,21 @@ async function handlePbtDebug(request, env, url) {
     imgTags.push(im[0]);
   }
 
-  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags });
+  const dewormSnippets = [];
+  const dewormRe = /deworm/gi;
+  let dm;
+  while ((dm = dewormRe.exec(html)) !== null && dewormSnippets.length < 10) {
+    dewormSnippets.push(html.slice(Math.max(0, dm.index - 250), dm.index + 150));
+  }
+
+  const vaccineSnippets = [];
+  const vaccineRe = /vaccin/gi;
+  let vm;
+  while ((vm = vaccineRe.exec(html)) !== null && vaccineSnippets.length < 10) {
+    vaccineSnippets.push(html.slice(Math.max(0, vm.index - 250), vm.index + 150));
+  }
+
+  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags, dewormSnippets, vaccineSnippets });
 }
 
 // TEMPORARY debug route — runs the PBT sync immediately (instead of waiting
@@ -505,7 +561,7 @@ async function expireOrders(env) {
 
 // ── Email (Resend) ────────────────────────────────────────────────────────────
 
-async function sendEmail(env, { to, subject, html }) {
+async function sendEmail(env, { to, subject, html, replyTo }) {
   if (!env.BREVO_API_KEY) return;
   const senderEmail = env.BREVO_SENDER_EMAIL || 'orders@bitcoin-pets.com';
   const senderName  = env.BREVO_SENDER_NAME  || 'Bitcoin Pets';
@@ -521,6 +577,7 @@ async function sendEmail(env, { to, subject, html }) {
         to: [{ email: to }],
         subject,
         htmlContent: html,
+        ...(replyTo ? { replyTo: { email: replyTo } } : {}),
       }),
     });
   } catch { /* email is best-effort; never block order processing */ }
@@ -552,7 +609,7 @@ async function sendOrderPaidEmails(env, orderId, txId) {
        ${escapeHtml(addressLine)}<br>
        ${escapeHtml(order.buyer_city)}, ${escapeHtml(order.buyer_state)} ${escapeHtml(order.buyer_zip)}<br>
        ${escapeHtml(order.buyer_country)}</p>
-    <p>We'll be in touch with delivery updates. Thanks for choosing Bitcoin Pets!</p>
+    <p>We'll be in touch with delivery updates. In the meantime you can reach us by phone at 970-680-3738. Thanks for choosing Bitcoin Pets!</p>
   `;
 
   const adminHtml = `
@@ -583,9 +640,10 @@ async function sendOrderPaidEmails(env, orderId, txId) {
     to: order.buyer_email,
     subject: `Your Bitcoin Pets order is confirmed — ${order.pet_name}`,
     html: buyerHtml,
+    replyTo: 'btcpets@gmail.com',
   });
   await sendEmail(env, {
-    to: 'zenontherocks@gmail.com',
+    to: 'btcpets@gmail.com',
     subject: `New paid order — ${order.pet_name} ($${order.price_usd.toFixed(2)})`,
     html: adminHtml,
   });
@@ -729,15 +787,17 @@ async function syncPbtListings(env) {
               // Fill in blanks only — don't overwrite existing values
               await env.DB.prepare(`
                 UPDATE pets SET
-                  breed      = CASE WHEN breed IS NULL AND ? IS NOT NULL THEN ? ELSE breed END,
-                  gender     = CASE WHEN gender = 'unknown' AND ? != 'unknown' THEN ? ELSE gender END,
-                  pbt_seller = COALESCE(pbt_seller, ?),
-                  updated_at = datetime('now')
+                  breed         = CASE WHEN breed IS NULL AND ? IS NOT NULL THEN ? ELSE breed END,
+                  gender        = CASE WHEN gender = 'unknown' AND ? != 'unknown' THEN ? ELSE gender END,
+                  pbt_seller    = COALESCE(pbt_seller, ?),
+                  microchip_id  = COALESCE(microchip_id, ?),
+                  updated_at    = datetime('now')
                 WHERE id = ?
               `).bind(
                 detail.breed, detail.breed,
                 detail.gender, detail.gender,
                 detail.pbt_seller,
+                detail.microchip_id,
                 petRow.id
               ).run();
               // Only insert photos if this pet currently has none
@@ -869,6 +929,10 @@ async function pbtScrapeDetail(cookie, pbtId, slug, errBag) {
   const registry  = extract('listing-details-registry');
   const weightStr = extract('listing-details-weight');
   const color     = extract('listing-details-color');
+  // Best-effort — class name unconfirmed against real markup; harmless if
+  // wrong, just leaves microchip_id null like it already is today.
+  const microchipRaw = extract('listing-details-microchip');
+  const microchip_id = microchipRaw && !microchipRaw.includes('Unlisted') ? microchipRaw : null;
 
   // Gender: from class content, fall back to slug
   const sexRaw = extract('listing-details-sex');
@@ -924,6 +988,7 @@ async function pbtScrapeDetail(cookie, pbtId, slug, errBag) {
     name, species, breed, gender, color,
     date_of_birth, weight_lbs,
     registry_name: registry || null,
+    microchip_id,
     price_usd,
     vaccinations,
     images,
@@ -948,13 +1013,13 @@ async function syncPbtListings_upsert(env, listing) {
   const id = crypto.randomUUID();
   await env.DB.prepare(`
     INSERT INTO pets (id, pbt_id, pbt_url, name, species, breed, date_of_birth, weight_lbs,
-      gender, color, vaccinations, registry_name, price_usd, pbt_seller)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      gender, color, vaccinations, registry_name, microchip_id, price_usd, pbt_seller)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, listing.pbt_id, listing.pbt_url, listing.name, listing.species,
     listing.breed, listing.date_of_birth, listing.weight_lbs,
     listing.gender, listing.color, listing.vaccinations,
-    listing.registry_name, listing.price_usd, listing.pbt_seller || null
+    listing.registry_name, listing.microchip_id, listing.price_usd, listing.pbt_seller || null
   ).run();
 
   for (let i = 0; i < listing.images.length; i++) {
