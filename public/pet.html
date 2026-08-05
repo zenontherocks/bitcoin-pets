@@ -543,7 +543,7 @@
       const errEl = document.getElementById('checkoutError');
       if (!buyer_name || !buyer_email || !buyer_phone || !buyer_address1 || !buyer_city || !buyer_state || !buyer_zip) {
         errEl.textContent = 'Please fill in all required fields.';
-        errEl.style.display = '';
+        errEl.style.display = 'block';
         return;
       }
 
@@ -562,7 +562,7 @@
         const data = await res.json();
         if (!res.ok) {
           errEl.textContent = data.error || 'Could not create invoice. Please try again.';
-          errEl.style.display = '';
+          errEl.style.display = 'block';
           btn.disabled = false;
           btn.textContent = 'Continue to Payment →';
           return;
@@ -570,7 +570,7 @@
         order = data.order;
       } catch {
         errEl.textContent = 'Network error. Please try again.';
-        errEl.style.display = '';
+        errEl.style.display = 'block';
         btn.disabled = false;
         btn.textContent = 'Continue to Payment →';
         return;
