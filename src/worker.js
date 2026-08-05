@@ -235,6 +235,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/pbt-sync-now' && request.method === 'GET') {
     return handlePbtSyncNow(request, env, url);
   }
+  if (url.pathname === '/api/admin/btc-debug' && request.method === 'GET') {
+    return handleBtcDebug(request, env, url);
+  }
   if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
     return handleAdminOrders(request, env, url);
   }
@@ -552,6 +555,25 @@ async function handlePbtSyncNow(request, env, url) {
   if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
   const stats = await syncPbtListings(env);
   return json({ stats });
+}
+
+// TEMPORARY debug route — tests BTC_XPUB address derivation without
+// consuming a real address index, and reports the specific failure
+// (never the secret itself) since handleCreateOrder deliberately shows
+// the client a generic "Payment system not configured" message. Remove
+// once the payment-address issue is diagnosed.
+async function handleBtcDebug(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  if (!env.BTC_XPUB) return json({ configured: false });
+  const info = { configured: true, xpub_length: env.BTC_XPUB.length, xpub_prefix: env.BTC_XPUB.slice(0, 4) };
+  try {
+    info.sample_address = deriveAddress(env.BTC_XPUB, 0);
+    info.ok = true;
+  } catch (e) {
+    info.ok = false;
+    info.error = String(e && e.message || e);
+  }
+  return json(info);
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
