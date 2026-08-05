@@ -199,7 +199,7 @@ export default {
 async function handleApi(request, env, url) {
   // Prices
   if (url.pathname === '/api/btc-price' && request.method === 'GET') {
-    return handleBtcPrice();
+    return handleBtcPrice(env);
   }
 
   // Pets
@@ -265,16 +265,34 @@ const MARKUP_USD = 400; // flat USD added per listing on top of the sats markup
 // Set to null to restore normal pricing (price_usd + $400 + 1M sats markup).
 const TEST_FLAT_PRICE_SATS = 10_000;
 
-async function fetchBtcUsd() {
-  // Every browse/pet-detail/checkout request calls this inline while
-  // serving the page, with the caller falling back to the base price on
-  // failure — but with no timeout, a slow mempool.space response used to
-  // hang the whole page load instead of failing fast into that fallback.
-  const res = await fetch('https://mempool.space/api/v1/prices', { signal: AbortSignal.timeout(5000) });
-  if (!res.ok) throw new Error('price fetch failed');
-  const { USD } = await res.json();
-  if (!USD || USD <= 0) throw new Error('bad price');
-  return USD;
+// Every browse/pet-detail/checkout request calls this inline while serving
+// the page. Callers used to treat any failure as "show the base price with
+// no markup" — which silently sells listings for far less than intended
+// whenever mempool.space is slow or unreachable, not just an odd display
+// glitch. Now falls back to the last successfully-fetched rate (cached in
+// `settings`) instead, so markup keeps applying even when the live fetch
+// fails; only a totally cold cache (never had a successful fetch yet)
+// still throws.
+async function fetchBtcUsd(env) {
+  try {
+    const res = await fetch('https://mempool.space/api/v1/prices', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('price fetch failed');
+    const { USD } = await res.json();
+    if (!USD || USD <= 0) throw new Error('bad price');
+    if (env) {
+      await env.DB.prepare(
+        "INSERT INTO settings (key, value) VALUES ('cached_btc_usd', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+      ).bind(String(USD)).run();
+    }
+    return USD;
+  } catch (err) {
+    if (env) {
+      const row = await env.DB.prepare("SELECT value FROM settings WHERE key='cached_btc_usd'").first();
+      const cached = parseFloat(row?.value);
+      if (cached > 0) return cached;
+    }
+    throw err;
+  }
 }
 
 function applyMarkup(price_usd, btcUsd) {
@@ -311,7 +329,7 @@ async function handleListPets(request, env, url) {
   ]);
 
   let btcUsd = 0;
-  try { btcUsd = await fetchBtcUsd(); } catch { /* show base price if fetch fails */ }
+  try { btcUsd = await fetchBtcUsd(env); } catch { /* only reachable if there's no cached rate at all yet */ }
   const pets = (rows.results || []).map(p => ({ ...p, price_usd: btcUsd ? applyMarkup(p.price_usd, btcUsd) : p.price_usd }));
   const hasMore = pets.length > limit;
   return json({ pets: hasMore ? pets.slice(0, limit) : pets, hasMore, page, total: countRow?.total ?? 0 });
@@ -336,7 +354,7 @@ async function handleGetPet(request, env, id) {
   ]);
 
   let btcUsd = 0;
-  try { btcUsd = await fetchBtcUsd(); } catch { /* show base price if fetch fails */ }
+  try { btcUsd = await fetchBtcUsd(env); } catch { /* only reachable if there's no cached rate at all yet */ }
   const displayPet = btcUsd ? { ...pet, price_usd: applyMarkup(pet.price_usd, btcUsd) } : pet;
   return json({ pet: displayPet, photos: pics.results || [], order_expires_at: activeOrder?.expires_at ?? null });
 }
@@ -373,7 +391,7 @@ async function handleCreateOrder(request, env, petId) {
     amountBtc = TEST_FLAT_PRICE_SATS / 1e8;
   } else {
     try {
-      const USD = await fetchBtcUsd();
+      const USD = await fetchBtcUsd(env);
       const baseSats = Math.round(((pet.price_usd + MARKUP_USD) / USD) * 1e8);
       amountBtc = (baseSats + MARKUP_SATS) / 1e8;
     } catch {
@@ -424,9 +442,9 @@ async function handleGetOrder(request, env, orderId) {
 
 // ── Price ─────────────────────────────────────────────────────────────────────
 
-async function handleBtcPrice() {
+async function handleBtcPrice(env) {
   try {
-    const usd = await fetchBtcUsd();
+    const usd = await fetchBtcUsd(env);
     return json({ usd });
   } catch {
     return json({ error: 'Could not fetch BTC price' }, 502);
