@@ -650,6 +650,7 @@ async function sendOrderPaidEmails(env, orderId, txId) {
   const amountBtc = order.amount_btc.toFixed(8);
   const addressLine = [order.buyer_address1, order.buyer_address2].filter(Boolean).join(', ');
   const txLink = `https://mempool.space/tx/${txId}`;
+  const listingLink = `https://bitcoin-pets.com/pet?id=${order.pet_id}`;
 
   const buyerHtml = `
     <h2>Your Bitcoin Pets order is confirmed</h2>
@@ -657,7 +658,8 @@ async function sendOrderPaidEmails(env, orderId, txId) {
     <h3>Order Summary</h3>
     <ul>
       <li><strong>Pet:</strong> ${escapeHtml(order.pet_name)} (${escapeHtml(order.breed || order.species)})</li>
-      <li><strong>Price:</strong> $${order.price_usd.toFixed(2)} USD (${amountBtc} BTC)</li>
+      <li><strong>Listing:</strong> <a href="${listingLink}">${listingLink}</a></li>
+      <li><strong>Price:</strong> ${amountBtc} BTC</li>
       <li><strong>Transaction:</strong> <a href="${txLink}">${txId}</a></li>
     </ul>
     <h3>Shipping To</h3>
