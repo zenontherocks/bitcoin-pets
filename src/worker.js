@@ -242,6 +242,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/btc-debug' && request.method === 'GET') {
     return handleBtcDebug(request, env, url);
   }
+  if (url.pathname === '/api/admin/confirm-payments-now' && request.method === 'GET') {
+    return handleConfirmPaymentsNow(request, env, url);
+  }
   if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
     return handleAdminOrders(request, env, url);
   }
@@ -336,7 +339,7 @@ async function handleGetPet(request, env, id) {
 
 // ── Orders & Payments ─────────────────────────────────────────────────────────
 
-// Creates a 30-minute Bitcoin invoice for a listing. Derives a fresh BIP32
+// Creates a 2-hour Bitcoin invoice for a listing. Derives a fresh BIP32
 // address from BTC_XPUB at the next unused index, then flips the pet to 'pending'.
 async function handleCreateOrder(request, env, petId) {
   const pet = await env.DB.prepare(
@@ -383,7 +386,7 @@ async function handleCreateOrder(request, env, petId) {
   }
 
   const orderId   = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
 
   await env.DB.prepare(`
     INSERT INTO orders (id, pet_id, pay_address, amount_btc, expires_at,
@@ -578,6 +581,23 @@ async function handleBtcDebug(request, env, url) {
     info.error = String(e && e.message || e);
   }
   return json(info);
+}
+
+// TEMPORARY debug route — runs confirmPayments() immediately (instead of
+// waiting for the */5 cron) and returns current order statuses, for
+// checking a just-sent test payment without waiting up to 5 minutes.
+// Remove alongside handleBtcDebug once confirmed working end-to-end.
+async function handleConfirmPaymentsNow(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  await confirmPayments(env);
+  const rows = await env.DB.prepare(`
+    SELECT id, pet_id, pay_address, amount_btc, status, tx_id, created_at, expires_at, paid_at
+    FROM orders
+    WHERE status IN ('pending', 'paid')
+    ORDER BY created_at DESC
+    LIMIT 10
+  `).all();
+  return json({ orders: rows.results || [] });
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
