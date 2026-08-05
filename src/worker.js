@@ -139,13 +139,17 @@ function deriveAddress(zpub, index) {
 // BTC_XPUB must be set as a Worker secret (wrangler secret put BTC_XPUB).
 async function claimNextAddress(env) {
   if (!env.BTC_XPUB) throw new Error('BTC_XPUB secret not configured');
+  // A separate SELECT-then-UPDATE here is a race: two concurrent orders can
+  // both read the same index before either writes the increment back,
+  // handing out the SAME address to two different orders — whoever pays it
+  // first (even for an unrelated order) then satisfies both. A single
+  // UPDATE ... RETURNING is atomic, so each caller gets a distinct index
+  // no matter how close together the requests land.
   const row = await env.DB.prepare(
-    "SELECT value FROM settings WHERE key='next_address_index'"
+    "UPDATE settings SET value = CAST(value AS INTEGER) + 1 WHERE key='next_address_index' RETURNING CAST(value AS INTEGER) - 1 AS claimed_index"
   ).first();
-  const index = parseInt(row?.value ?? '0', 10);
-  await env.DB.prepare(
-    "UPDATE settings SET value=? WHERE key='next_address_index'"
-  ).bind(String(index + 1)).run();
+  const index = row?.claimed_index;
+  if (index == null) throw new Error('address index not initialized');
   return { address: deriveAddress(env.BTC_XPUB, index), index };
 }
 
@@ -244,6 +248,9 @@ async function handleApi(request, env, url) {
   }
   if (url.pathname === '/api/admin/confirm-payments-now' && request.method === 'GET') {
     return handleConfirmPaymentsNow(request, env, url);
+  }
+  if (url.pathname === '/api/admin/address-reuse-check' && request.method === 'GET') {
+    return handleAddressReuseCheck(request, env, url);
   }
   if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
     return handleAdminOrders(request, env, url);
@@ -622,6 +629,21 @@ async function handleConfirmPaymentsNow(request, env, url) {
   return json({ orders: rows.results || [] });
 }
 
+// TEMPORARY debug route — checks whether the SELECT-then-UPDATE race in the
+// old claimNextAddress() already handed out the same pay_address to more
+// than one order before the atomic-claim fix. Remove alongside the other
+// TEMPORARY debug routes once confirmed clean.
+async function handleAddressReuseCheck(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const rows = await env.DB.prepare(`
+    SELECT pay_address, COUNT(*) AS order_count, GROUP_CONCAT(id) AS order_ids, GROUP_CONCAT(status) AS statuses
+    FROM orders
+    GROUP BY pay_address
+    HAVING COUNT(*) > 1
+  `).all();
+  return json({ duplicate_addresses: rows.results || [] });
+}
+
 // ── Cron: order expiry ────────────────────────────────────────────────────────
 
 async function expireOrders(env) {
@@ -682,7 +704,7 @@ async function sendOrderPaidEmails(env, orderId, txId) {
       <li><strong>Pet:</strong> ${escapeHtml(order.pet_name)} (${escapeHtml(order.breed || order.species)})</li>
       <li><strong>Listing:</strong> <a href="${listingLink}">${listingLink}</a></li>
       <li><strong>Price:</strong> ${amountBtc} BTC</li>
-      <li><strong>Transaction:</strong> <a href="${txLink}">${txId}</a></li>
+      <li><strong>Transaction:</strong> <a href="${txLink}">${txLink}</a></li>
     </ul>
     <h3>Shipping To</h3>
     <p>${escapeHtml(order.buyer_name)}<br>
@@ -712,7 +734,7 @@ async function sendOrderPaidEmails(env, orderId, txId) {
     <ul>
       <li><strong>Order ID:</strong> ${escapeHtml(order.id)}</li>
       <li><strong>Pay Address:</strong> ${escapeHtml(order.pay_address)}</li>
-      <li><strong>Transaction:</strong> <a href="${txLink}">${txId}</a></li>
+      <li><strong>Transaction:</strong> <a href="${txLink}">${txLink}</a></li>
     </ul>
   `;
 
