@@ -239,7 +239,8 @@
 
       if (!append) {
         grid.innerHTML = '';
-        stateBox.style.display = 'none';
+        stateBox.innerHTML = '<p>Loading&hellip;</p>';
+        stateBox.style.display = '';
         loadMoreWrap.style.display = 'none';
         currentPage = 1;
       }
@@ -256,6 +257,7 @@
           stateBox.innerHTML = '<p>No listings available right now. Check back soon!</p>';
           stateBox.style.display = '';
         } else {
+          stateBox.style.display = 'none';
           pets.forEach(pet => grid.appendChild(renderCard(pet)));
           refreshPriceDisplay();
           countEl.textContent = data.total + ' listing' + (data.total === 1 ? '' : 's');
