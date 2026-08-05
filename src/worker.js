@@ -266,7 +266,11 @@ const MARKUP_USD = 400; // flat USD added per listing on top of the sats markup
 const TEST_FLAT_PRICE_SATS = 10_000;
 
 async function fetchBtcUsd() {
-  const res = await fetch('https://mempool.space/api/v1/prices');
+  // Every browse/pet-detail/checkout request calls this inline while
+  // serving the page, with the caller falling back to the base price on
+  // failure — but with no timeout, a slow mempool.space response used to
+  // hang the whole page load instead of failing fast into that fallback.
+  const res = await fetch('https://mempool.space/api/v1/prices', { signal: AbortSignal.timeout(5000) });
   if (!res.ok) throw new Error('price fetch failed');
   const { USD } = await res.json();
   if (!USD || USD <= 0) throw new Error('bad price');
