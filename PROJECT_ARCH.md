@@ -73,7 +73,7 @@ Worker bindings (from `wrangler.toml`):
 - **Prices have a currency anchor.** `price_currency` is either `'btc'` or `'usd'`. USD-anchored listings convert to BTC at order time using the mempool.space price feed.
 - **Images are stored in R2** and always referenced through the `/api/images/:key` Worker endpoint — never via direct R2 URLs.
 - **Image keys are sanitized** with `/[^a-zA-Z0-9.\-_]/g` before use in DB or R2 lookups.
-- **Orders expire after 30 minutes.** The cron job reverts the pet status to `'available'` for expired orders.
+- **Orders expire after 2 hours.** The cron job reverts the pet status to `'available'` for expired orders.
 - **Pet status lifecycle:** `available` → `pending` (order created) → `sold` (payment confirmed on-chain) or back to `available` (order expired).
 
 ---
