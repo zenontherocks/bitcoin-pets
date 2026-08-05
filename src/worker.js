@@ -250,6 +250,11 @@ async function handleApi(request, env, url) {
 const MARKUP_SATS = 1_000_000; // 1M sats added per listing to cover shipping/expenses
 const MARKUP_USD = 400; // flat USD added per listing on top of the sats markup
 
+// TEMPORARY: overrides every listing's displayed price and actual invoice
+// amount to this flat sats value, for cheap end-to-end checkout testing.
+// Set to null to restore normal pricing (price_usd + $400 + 1M sats markup).
+const TEST_FLAT_PRICE_SATS = 10_000;
+
 async function fetchBtcUsd() {
   const res = await fetch('https://mempool.space/api/v1/prices');
   if (!res.ok) throw new Error('price fetch failed');
@@ -259,6 +264,7 @@ async function fetchBtcUsd() {
 }
 
 function applyMarkup(price_usd, btcUsd) {
+  if (TEST_FLAT_PRICE_SATS != null) return (TEST_FLAT_PRICE_SATS / 1e8) * btcUsd;
   return price_usd + MARKUP_USD + (MARKUP_SATS / 1e8) * btcUsd;
 }
 
@@ -349,12 +355,16 @@ async function handleCreateOrder(request, env, petId) {
 
   // Compute BTC amount: convert (base USD + $400 markup) to sats, then add 1M sats markup
   let amountBtc;
-  try {
-    const USD = await fetchBtcUsd();
-    const baseSats = Math.round(((pet.price_usd + MARKUP_USD) / USD) * 1e8);
-    amountBtc = (baseSats + MARKUP_SATS) / 1e8;
-  } catch {
-    return json({ error: 'Could not fetch current BTC price. Please try again.' }, 502);
+  if (TEST_FLAT_PRICE_SATS != null) {
+    amountBtc = TEST_FLAT_PRICE_SATS / 1e8;
+  } else {
+    try {
+      const USD = await fetchBtcUsd();
+      const baseSats = Math.round(((pet.price_usd + MARKUP_USD) / USD) * 1e8);
+      amountBtc = (baseSats + MARKUP_SATS) / 1e8;
+    } catch {
+      return json({ error: 'Could not fetch current BTC price. Please try again.' }, 502);
+    }
   }
 
   // Derive the next fresh address from the xpub HD wallet
