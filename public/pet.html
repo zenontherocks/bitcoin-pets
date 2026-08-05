@@ -214,7 +214,7 @@
     .invoice-warning {
       background: #fff4e5; color: #92400e; border: 1px solid #f7c873;
       border-radius: var(--radius); padding: 0.65rem 0.85rem; font-size: 0.8rem;
-      text-align: center; line-height: 1.5; margin-bottom: 0.75rem;
+      text-align: center; line-height: 1.5; margin-top: 0.75rem;
     }
     :root[data-theme="dark"] .invoice-warning {
       background: rgba(247,147,26,0.12); color: #f7931a; border-color: rgba(247,147,26,0.35);
@@ -315,13 +315,13 @@
           <div class="invoice-addr-label">Bitcoin Address</div>
           <div class="invoice-addr" id="invoiceAddr"></div>
         </div>
-        <div class="invoice-warning">Only send Bitcoin to this address. This screen will update once the on-chain transaction is confirmed (usually takes several minutes).</div>
         <button class="copy-btn" id="copyBtn">Copy Address</button>
         <a class="wallet-link" id="walletLink" href="#" target="_blank" rel="noopener">Open in Wallet ↗</a>
         <div class="invoice-footer">
           <span class="countdown" id="countdown"></span>
           <span class="poll-status" id="pollStatus">Checking for payment&hellip;</span>
         </div>
+        <div class="invoice-warning">Only send Bitcoin to this address. This screen will update once the on-chain transaction is confirmed (usually takes several minutes).</div>
       </div>
 
       <!-- Step 3: success -->
