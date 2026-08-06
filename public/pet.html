@@ -224,7 +224,9 @@
     .invoice-success { text-align: center; padding: 1.5rem 0.5rem; }
     .invoice-success .check { font-size: 3rem; margin-bottom: 0.75rem; }
     .invoice-success h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--green); }
-    .invoice-success p { font-size: 0.875rem; color: var(--gray); line-height: 1.6; }
+    .invoice-success p { font-size: 0.875rem; color: var(--gray); line-height: 1.6; margin-top: 0.6rem; }
+    .invoice-success ul { text-align: left; max-width: 320px; margin: 0.6rem auto 0; padding-left: 1.25rem; }
+    .invoice-success li { font-size: 0.875rem; color: var(--gray); line-height: 1.6; margin-bottom: 0.25rem; }
     .invoice-success .tx-link { font-size: 0.78rem; word-break: break-all; color: var(--orange); text-decoration: none; }
     .invoice-success .tx-link:hover { text-decoration: underline; }
     .invoice-error { text-align: center; padding: 1rem 0; font-size: 0.875rem; color: #e53e3e; }
@@ -329,7 +331,14 @@
         <div class="invoice-success">
           <div class="check">&#10003;</div>
           <h3>Payment Confirmed!</h3>
-          <p>Your payment was received. We will contact you at your provided email to arrange a meet-up along our delivery route.</p>
+          <p>Your payment was received. We&rsquo;ll be in touch at your provided email with next steps, including:</p>
+          <ul>
+            <li>Our phone number (not published anywhere else)</li>
+            <li>A link to the record of this payment</li>
+            <li>A link back to this listing, which we&rsquo;ll try to keep up permanently so you can revisit it</li>
+          </ul>
+          <p>Be sure to save some photos now &mdash; you&rsquo;ll want them once your new best friend is all grown up!</p>
+          <p>Thank you so much for choosing Bitcoin Pets. We wish you and your new companion a wonderful life together!</p>
           <p id="txLinkWrap" style="margin-top:0.75rem"></p>
         </div>
       </div>
