@@ -252,6 +252,9 @@ async function handleApi(request, env, url) {
   if (url.pathname === '/api/admin/address-reuse-check' && request.method === 'GET') {
     return handleAddressReuseCheck(request, env, url);
   }
+  if (url.pathname === '/api/admin/order-lookup' && request.method === 'GET') {
+    return handleOrderLookup(request, env, url);
+  }
   if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
     return handleAdminOrders(request, env, url);
   }
@@ -642,6 +645,25 @@ async function handleAddressReuseCheck(request, env, url) {
     HAVING COUNT(*) > 1
   `).all();
   return json({ duplicate_addresses: rows.results || [] });
+}
+
+// TEMPORARY debug route — look up a pet's full order history (every status,
+// not just pending/paid) after re-running confirmPayments() immediately, for
+// diagnosing "I paid but the listing is still active" reports. Remove
+// alongside the other TEMPORARY debug routes once confirmed working end-to-end.
+async function handleOrderLookup(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
+  const petId = url.searchParams.get('pet_id');
+  if (!petId) return json({ error: 'pet_id query param required' }, 400);
+  await confirmPayments(env);
+  const pet = await env.DB.prepare(
+    "SELECT id, name, status, updated_at FROM pets WHERE id=?"
+  ).bind(petId).first();
+  const orders = await env.DB.prepare(
+    `SELECT id, pay_address, amount_btc, status, tx_id, created_at, expires_at, paid_at
+     FROM orders WHERE pet_id=? ORDER BY created_at DESC`
+  ).bind(petId).all();
+  return json({ pet, orders: orders.results || [] });
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
