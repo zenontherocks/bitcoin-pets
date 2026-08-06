@@ -70,7 +70,8 @@
 
   <script>
     const params = new URLSearchParams(location.search);
-    const orderId = params.get('order_id');
+    const orderIds = (params.get('order_ids') || params.get('order_id') || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
     const urlToken = params.get('token');
     if (urlToken) document.getElementById('tokenInput').value = urlToken;
 
@@ -204,28 +205,43 @@
           </div>
         </div>`;
 
-      document.getElementById('copies').innerHTML = renderCopy(order, signatures);
+      return renderCopy(order, signatures);
+    }
+
+    async function fetchOrder(orderId) {
+      const res = await fetch(apiUrl(`/api/admin/orders/${encodeURIComponent(orderId)}`));
+      if (res.status === 401) throw new Error('unauthorized');
+      if (!res.ok) throw new Error('not_found');
+      const data = await res.json();
+      return data.order;
     }
 
     async function load() {
       const statusEl = document.getElementById('statusMsg');
-      if (!orderId) {
+      if (!orderIds.length) {
         statusEl.textContent = 'Missing order_id in URL.';
         return;
       }
       try {
-        const res = await fetch(apiUrl(`/api/admin/orders/${encodeURIComponent(orderId)}`));
-        if (res.status === 401) {
+        const results = await Promise.allSettled(orderIds.map(fetchOrder));
+        const orders = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+        const failedCount = results.length - orders.length;
+
+        if (results.some(r => r.status === 'rejected' && r.reason?.message === 'unauthorized')) {
           statusEl.textContent = 'Invalid token.';
           return;
         }
-        if (!res.ok) {
+        if (!orders.length) {
           statusEl.textContent = 'Order not found.';
           return;
         }
-        const data = await res.json();
-        renderWaybill(data.order);
-        statusEl.textContent = `Loaded — ${data.order.pet_name}, order ${data.order.order_id}.`;
+
+        document.getElementById('copies').innerHTML = orders.map(renderWaybill).join('');
+
+        const loadedDesc = orders.length === 1
+          ? `${orders[0].pet_name}, order ${orders[0].order_id}`
+          : `${orders.length} orders`;
+        statusEl.textContent = `Loaded — ${loadedDesc}.` + (failedCount ? ` (${failedCount} failed to load)` : '');
       } catch {
         statusEl.textContent = 'Failed to load.';
       }

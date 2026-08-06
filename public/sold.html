@@ -23,6 +23,11 @@
     .btn { padding: 0.4rem 0.9rem; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; display: inline-block; }
     .btn-waybill { background: #f7931a; color: #fff; }
     .btn-waybill:hover { background: #d97b0e; }
+    .btn-print-multi { background: #1a1a1a; color: #fff; }
+    .btn-print-multi:hover { background: #333; }
+    .btn-print-multi:disabled { background: #ccc; cursor: not-allowed; }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .check-col { width: 2rem; }
   </style>
 </head>
 <body>
@@ -39,10 +44,13 @@
     </div>
 
     <div class="card">
-      <h2>Orders</h2>
+      <div class="toolbar">
+        <h2 style="margin-bottom:0">Orders</h2>
+        <button class="btn btn-print-multi" id="printSelectedBtn" disabled>Print Selected</button>
+      </div>
       <table id="ordersTable">
-        <thead><tr><th>Pet</th><th>Breed</th><th>Buyer</th><th>Ship To</th><th>Paid</th><th>BTC</th><th></th></tr></thead>
-        <tbody id="ordersBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        <thead><tr><th class="check-col"><input type="checkbox" id="selectAll" /></th><th>Pet</th><th>Breed</th><th>Buyer</th><th>Ship To</th><th>Paid</th><th>BTC</th><th></th></tr></thead>
+        <tbody id="ordersBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -61,9 +69,21 @@
       return t ? `${path}?token=${encodeURIComponent(t)}` : path;
     }
 
-    function waybillUrl(orderId) {
+    function waybillUrl(orderIds) {
       const t = getToken();
-      return `/waybill?order_id=${encodeURIComponent(orderId)}` + (t ? `&token=${encodeURIComponent(t)}` : '');
+      const ids = Array.isArray(orderIds) ? orderIds.join(',') : orderIds;
+      return `/waybill?order_ids=${encodeURIComponent(ids)}` + (t ? `&token=${encodeURIComponent(t)}` : '');
+    }
+
+    const selectAllBox   = document.getElementById('selectAll');
+    const printSelectedBtn = document.getElementById('printSelectedBtn');
+
+    function getSelectedIds() {
+      return Array.from(document.querySelectorAll('.order-check:checked')).map(cb => cb.value);
+    }
+
+    function refreshPrintButton() {
+      printSelectedBtn.disabled = getSelectedIds().length === 0;
     }
 
     async function loadOrders() {
@@ -71,17 +91,18 @@
       try {
         const res = await fetch(apiUrl('/api/admin/orders'));
         if (res.status === 401) {
-          tbody.innerHTML = '<tr><td colspan="7" class="empty">Invalid token.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" class="empty">Invalid token.</td></tr>';
           return;
         }
         const data = await res.json();
         const orders = data.orders || [];
         if (!orders.length) {
-          tbody.innerHTML = '<tr><td colspan="7" class="empty">No paid orders yet.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" class="empty">No paid orders yet.</td></tr>';
           return;
         }
         tbody.innerHTML = orders.map(o => `
           <tr>
+            <td><input type="checkbox" class="order-check" value="${escHtml(o.order_id)}" /></td>
             <td><strong>${escHtml(o.pet_name)}</strong></td>
             <td>${escHtml(o.breed || '—')}</td>
             <td>${escHtml(o.buyer_name)}</td>
@@ -91,8 +112,10 @@
             <td><a class="btn btn-waybill" href="${waybillUrl(o.order_id)}">Waybill</a></td>
           </tr>
         `).join('');
+        selectAllBox.checked = false;
+        refreshPrintButton();
       } catch {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty">Failed to load.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty">Failed to load.</td></tr>';
       }
     }
 
@@ -101,6 +124,22 @@
     }
 
     document.getElementById('tokenInput').addEventListener('change', loadOrders);
+
+    document.getElementById('ordersBody').addEventListener('change', e => {
+      if (e.target.classList.contains('order-check')) refreshPrintButton();
+    });
+
+    selectAllBox.addEventListener('change', () => {
+      document.querySelectorAll('.order-check').forEach(cb => cb.checked = selectAllBox.checked);
+      refreshPrintButton();
+    });
+
+    printSelectedBtn.addEventListener('click', () => {
+      const ids = getSelectedIds();
+      if (!ids.length) return;
+      window.open(waybillUrl(ids), '_blank');
+    });
+
     loadOrders();
   </script>
 </body>
