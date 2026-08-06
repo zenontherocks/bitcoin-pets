@@ -656,14 +656,33 @@ async function handleOrderLookup(request, env, url) {
   const petId = url.searchParams.get('pet_id');
   if (!petId) return json({ error: 'pet_id query param required' }, 400);
   await confirmPayments(env);
-  const pet = await env.DB.prepare(
+  let pet = await env.DB.prepare(
     "SELECT id, name, status, updated_at FROM pets WHERE id=?"
   ).bind(petId).first();
+
+  // Reconcile: a paid order means this pet must be 'sold', regardless of
+  // what a later PBT sync pass did to its status.
+  let reconciled = false;
+  if (pet && pet.status !== 'sold') {
+    const hasPaidOrder = await env.DB.prepare(
+      "SELECT 1 FROM orders WHERE pet_id=? AND status='paid' LIMIT 1"
+    ).bind(petId).first();
+    if (hasPaidOrder) {
+      await env.DB.prepare(
+        "UPDATE pets SET status='sold', updated_at=datetime('now') WHERE id=?"
+      ).bind(petId).run();
+      pet = await env.DB.prepare(
+        "SELECT id, name, status, updated_at FROM pets WHERE id=?"
+      ).bind(petId).first();
+      reconciled = true;
+    }
+  }
+
   const orders = await env.DB.prepare(
     `SELECT id, pay_address, amount_btc, status, tx_id, created_at, expires_at, paid_at
      FROM orders WHERE pet_id=? ORDER BY created_at DESC`
   ).bind(petId).all();
-  return json({ pet, orders: orders.results || [] });
+  return json({ pet, orders: orders.results || [], reconciled });
 }
 
 // ── Cron: order expiry ────────────────────────────────────────────────────────
@@ -888,7 +907,7 @@ async function syncPbtListings(env) {
       if (price_usd && price_usd > 0) {
         try {
           await env.DB.prepare(
-            "UPDATE pets SET price_usd=?, status='available', updated_at=datetime('now') WHERE pbt_id=?"
+            "UPDATE pets SET price_usd=?, status = CASE WHEN status = 'ended' THEN 'available' ELSE status END, updated_at=datetime('now') WHERE pbt_id=?"
           ).bind(price_usd, id).run();
         } catch { /* ignore */ }
       }
@@ -1126,9 +1145,11 @@ async function syncPbtListings_upsert(env, listing) {
   ).bind(listing.pbt_id).first();
 
   if (existing) {
-    // Update price and status only (other fields rarely change)
+    // Update price only. Never force status back to 'available' here —
+    // this listing may already be 'sold' or 'pending' on our own site even
+    // though it's still visible on PBT's, so only revive an 'ended' one.
     await env.DB.prepare(
-      "UPDATE pets SET price_usd=?, status='available', updated_at=datetime('now') WHERE pbt_id=?"
+      "UPDATE pets SET price_usd=?, status = CASE WHEN status = 'ended' THEN 'available' ELSE status END, updated_at=datetime('now') WHERE pbt_id=?"
     ).bind(listing.price_usd, listing.pbt_id).run();
     return;
   }
