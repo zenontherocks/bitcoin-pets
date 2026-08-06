@@ -23,8 +23,7 @@
       background: #fff; border: 2px solid #000; padding: 1.25rem;
       margin-bottom: 1.5rem; font-size: 0.85rem;
     }
-    .copy-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem; }
-    .copy-title { font-weight: 800; font-size: 1rem; text-transform: uppercase; }
+    .copy-header { margin-bottom: 0.75rem; }
     .waybill-no { font-weight: 700; }
     .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border: 1px solid #000; padding: 0.75rem; margin-bottom: 0.75rem; }
     .party h3 { font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.35rem; }
@@ -124,12 +123,11 @@
         </table>`;
     }
 
-    function renderCopy(order, copyLabel, signatureBlock) {
+    function renderCopy(order, signatureBlock) {
       const buyerAddress = [order.buyer_address1, order.buyer_address2].filter(Boolean).join(', ');
       return `
         <div class="copy">
           <div class="copy-header">
-            <div class="copy-title">(${escHtml(copyLabel)})</div>
             <div class="waybill-no">NON-NEGOTIABLE DOMESTIC WAYBILL #${escHtml(order.pbt_id)}</div>
           </div>
 
@@ -194,15 +192,7 @@
     }
 
     function renderWaybill(order) {
-      const transportersSignatures = `
-        <div class="signatures">
-          <div>
-            Seller Signature:
-            <div class="line"></div>
-          </div>
-          <div></div>
-        </div>`;
-      const usdaSignatures = `
+      const signatures = `
         <div class="signatures">
           <div>
             Buyer Acceptance Signature:
@@ -214,9 +204,7 @@
           </div>
         </div>`;
 
-      document.getElementById('copies').innerHTML =
-        renderCopy(order, 'Transporters Copy', transportersSignatures) +
-        renderCopy(order, 'USDA Copy', usdaSignatures);
+      document.getElementById('copies').innerHTML = renderCopy(order, signatures);
     }
 
     async function load() {
