@@ -96,7 +96,7 @@
           <tr>
             <td><strong>${escHtml(s.username)}</strong></td>
             <td style="color:#888">${s.added_at ? s.added_at.slice(0, 10) : ''}</td>
-            <td><button class="btn btn-remove" onclick="removeSeller('${escHtml(s.username)}')">Remove</button></td>
+            <td><button class="btn btn-remove" data-username="${escHtml(s.username)}">Remove</button></td>
           </tr>
         `).join('');
       } catch {
@@ -140,6 +140,11 @@
     function escHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+
+    document.getElementById('blBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-remove');
+      if (btn) removeSeller(btn.dataset.username);
+    });
 
     document.getElementById('tokenInput').addEventListener('change', loadList);
     loadList();
