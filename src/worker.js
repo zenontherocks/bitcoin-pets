@@ -273,7 +273,7 @@ const MARKUP_USD = 400; // flat USD added per listing on top of the sats markup
 // TEMPORARY: overrides every listing's displayed price and actual invoice
 // amount to this flat sats value, for cheap end-to-end checkout testing.
 // Set to null to restore normal pricing (price_usd + $400 + 1M sats markup).
-const TEST_FLAT_PRICE_SATS = 10_000;
+const TEST_FLAT_PRICE_SATS = null;
 
 // Every browse/pet-detail/checkout request calls this inline while serving
 // the page. Callers used to treat any failure as "show the base price with
