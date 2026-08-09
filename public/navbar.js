@@ -93,7 +93,7 @@
     fetch('/api/btc-price').then(r => r.json()).then(d => {
       if (d.usd) {
         const el = document.getElementById('navBtcRate');
-        if (el) el.textContent = '$' + Math.round(d.usd).toLocaleString();
+        if (el) el.textContent = '₿1 = $' + Math.round(d.usd).toLocaleString();
       }
     }).catch(() => {});
   });
