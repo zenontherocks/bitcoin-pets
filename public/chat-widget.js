@@ -221,18 +221,25 @@ export async function initChat(container, { petId, petName } = {}) {
   // Gift-wrap timestamps are deliberately randomized (NIP-59) for privacy,
   // so history has to be sorted by the rumor's real created_at, not the
   // order events happen to arrive in.
+  let loadingHistory = false;
   async function loadHistory() {
-    const stored = await pool.querySync(dmRelays, { kinds: [1059], '#p': [pubkey] });
-    console.log('[chat] loaded', stored.length, 'stored gift wraps');
-    const rumors = [];
-    for (const event of stored) {
-      if (seenEventIds.has(event.id)) continue;
-      seenEventIds.add(event.id);
-      const rumor = unwrapValid(event);
-      if (rumor) rumors.push(rumor);
+    if (loadingHistory) return;
+    loadingHistory = true;
+    try {
+      const stored = await pool.querySync(dmRelays, { kinds: [1059], '#p': [pubkey] });
+      console.log('[chat] loaded', stored.length, 'stored gift wraps');
+      const rumors = [];
+      for (const event of stored) {
+        if (seenEventIds.has(event.id)) continue;
+        seenEventIds.add(event.id);
+        const rumor = unwrapValid(event);
+        if (rumor) rumors.push(rumor);
+      }
+      rumors.sort((a, b) => a.created_at - b.created_at);
+      rumors.forEach(displayRumor);
+    } finally {
+      loadingHistory = false;
     }
-    rumors.sort((a, b) => a.created_at - b.created_at);
-    rumors.forEach(displayRumor);
   }
 
   await loadHistory();
@@ -243,12 +250,20 @@ export async function initChat(container, { petId, petName } = {}) {
     onclose: (reasons) => console.log('[chat] subscription closed:', reasons),
   });
 
-  // Backgrounded tabs get their JS timers throttled by the browser, which
-  // can silently stall the subscription's WebSocket (and even the ping/
-  // reconnect logic meant to fix that, since it also runs on a timer). The
-  // fix isn't a better timer — it's re-checking as soon as the tab is
-  // visible again, which `visibilitychange` reports reliably regardless of
-  // throttling.
+  // The live subscription alone isn't reliable enough to depend on: when the
+  // relay connection drops and reconnects (idle timeout, network blip, a
+  // backgrounded tab's throttled timers), nostr-tools resubscribes using
+  // since = <latest created_at seen> + 1 — but NIP-17 gift wraps carry a
+  // deliberately randomized/backdated created_at (NIP-59), so a genuinely
+  // new message can land earlier than that cutoff and get silently filtered
+  // out of the live feed from then on. A plain history refetch has no such
+  // filter and always catches up, so we poll it on a timer as a safety net
+  // (in addition to refetching immediately on tab focus, which feels
+  // snappier when it applies).
+  setInterval(() => {
+    loadHistory().catch(err => console.log('[chat] periodic refetch failed:', err));
+  }, 10000);
+
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     loadHistory().catch(err => console.log('[chat] refetch on focus failed:', err));
