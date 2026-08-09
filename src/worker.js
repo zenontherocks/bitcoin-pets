@@ -227,7 +227,7 @@ async function handleApi(request, env, url) {
 
   // Admin
   if (url.pathname === '/api/admin/address-index' && request.method === 'GET') {
-    return handleAddressIndex(request, env);
+    return handleAddressIndex(request, env, url);
   }
   if (url.pathname === '/api/admin/seller-blacklist') {
     if (request.method === 'GET')  return handleBlacklistGet(request, env, url);
@@ -283,7 +283,26 @@ const TEST_FLAT_PRICE_SATS = null;
 // `settings`) instead, so markup keeps applying even when the live fetch
 // fails; only a totally cold cache (never had a successful fetch yet)
 // still throws.
+// A cached rate under this age is served directly, skipping the live
+// fetch — BTC/USD doesn't move enough in under a minute to matter for
+// display/invoice purposes, and this keeps normal traffic from hammering
+// mempool.space on every single page/order request.
+const BTC_USD_CACHE_TTL_MS = 45_000;
+
 async function fetchBtcUsd(env) {
+  if (env) {
+    const row = await env.DB.prepare(
+      "SELECT value FROM settings WHERE key='cached_btc_usd'"
+    ).first();
+    const atRow = await env.DB.prepare(
+      "SELECT value FROM settings WHERE key='cached_btc_usd_at'"
+    ).first();
+    const cached = parseFloat(row?.value);
+    const cachedAt = parseInt(atRow?.value, 10);
+    if (cached > 0 && cachedAt && Date.now() - cachedAt < BTC_USD_CACHE_TTL_MS) {
+      return cached;
+    }
+  }
   try {
     const res = await fetch('https://mempool.space/api/v1/prices', { signal: AbortSignal.timeout(5000) });
     if (!res.ok) throw new Error('price fetch failed');
@@ -293,6 +312,9 @@ async function fetchBtcUsd(env) {
       await env.DB.prepare(
         "INSERT INTO settings (key, value) VALUES ('cached_btc_usd', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
       ).bind(String(USD)).run();
+      await env.DB.prepare(
+        "INSERT INTO settings (key, value) VALUES ('cached_btc_usd_at', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+      ).bind(String(Date.now())).run();
     }
     return USD;
   } catch (err) {
@@ -346,9 +368,15 @@ async function handleListPets(request, env, url) {
 }
 
 async function handleGetPet(request, env, id) {
-  const pet = await env.DB.prepare(
-    'SELECT * FROM pets WHERE id = ?'
-  ).bind(id).first();
+  // Explicit column list, not SELECT * — pbt_seller/pbt_url are internal
+  // sourcing info (the origin listing's owner/URL on pbtmarketplace.com)
+  // with no buyer-facing purpose and shouldn't be exposed publicly.
+  const pet = await env.DB.prepare(`
+    SELECT id, pbt_id, name, species, breed, date_of_birth, weight_lbs, gender,
+           color, description, health_info, vaccinations, registry_name,
+           registry_number, microchip_id, price_usd, status, created_at, updated_at
+    FROM pets WHERE id = ?
+  `).bind(id).first();
 
   if (!pet) return json({ error: 'Not found' }, 404);
 
@@ -394,6 +422,29 @@ async function handleCreateOrder(request, env, petId) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyer_email)) {
     return json({ error: 'Invalid email address' }, 400);
   }
+  const textFields = { buyer_name, buyer_phone, buyer_address1, buyer_address2, buyer_city, buyer_state, buyer_zip };
+  for (const [field, value] of Object.entries(textFields)) {
+    if (value && value.length > 200) {
+      return json({ error: `${field} is too long` }, 400);
+    }
+  }
+
+  // Atomically claim the pet before doing any expensive/fallible work below,
+  // so two concurrent requests for the same pet can't both pass the earlier
+  // status check and each walk away with a valid, independently-payable
+  // invoice (a real double-sale if both get paid).
+  const claim = await env.DB.prepare(
+    "UPDATE pets SET status='pending', updated_at=datetime('now') WHERE id=? AND status='available'"
+  ).bind(petId).run();
+  if (!claim.meta || claim.meta.changes === 0) {
+    return json({ error: 'This listing is no longer available' }, 409);
+  }
+
+  async function releaseClaim() {
+    await env.DB.prepare(
+      "UPDATE pets SET status='available', updated_at=datetime('now') WHERE id=? AND status='pending'"
+    ).bind(petId).run();
+  }
 
   // Compute BTC amount: convert (base USD + $400 markup) to sats, then add 1M sats markup
   let amountBtc;
@@ -405,6 +456,7 @@ async function handleCreateOrder(request, env, petId) {
       const baseSats = Math.round(((pet.price_usd + MARKUP_USD) / USD) * 1e8);
       amountBtc = (baseSats + MARKUP_SATS) / 1e8;
     } catch {
+      await releaseClaim();
       return json({ error: 'Could not fetch current BTC price. Please try again.' }, 502);
     }
   }
@@ -414,6 +466,7 @@ async function handleCreateOrder(request, env, petId) {
   try {
     derived = await claimNextAddress(env);
   } catch (e) {
+    await releaseClaim();
     return json({ error: 'Payment system not configured. Please contact support.' }, 503);
   }
 
@@ -432,10 +485,6 @@ async function handleCreateOrder(request, env, petId) {
     buyer_city.trim(), buyer_state.trim(), buyer_zip.trim(),
     buyer_country || 'US'
   ).run();
-
-  await env.DB.prepare(
-    "UPDATE pets SET status='pending', updated_at=datetime('now') WHERE id=?"
-  ).bind(petId).run();
 
   return json({
     order: { id: orderId, pay_address: derived.address, amount_btc: amountBtc, expires_at: expiresAt, pet_name: pet.name }
@@ -464,7 +513,8 @@ async function handleBtcPrice(env) {
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 
-async function handleAddressIndex(request, env) {
+async function handleAddressIndex(request, env, url) {
+  if (!checkAdminToken(request, env, url)) return json({ error: 'Unauthorized' }, 401);
   const row = await env.DB.prepare(
     "SELECT value FROM settings WHERE key='next_address_index'"
   ).first();
@@ -475,7 +525,7 @@ async function handleAddressIndex(request, env) {
 
 function checkAdminToken(request, env, url) {
   const token = env.ADMIN_TOKEN;
-  if (!token) return true; // no secret configured — allow
+  if (!token) return false; // no secret configured — deny, don't fail open
   return url.searchParams.get('token') === token;
 }
 
@@ -743,9 +793,9 @@ async function sendOrderPaidEmails(env, orderId, txId) {
     <h3>Order Summary</h3>
     <ul>
       <li><strong>Pet:</strong> ${escapeHtml(order.pet_name)} (${escapeHtml(order.breed || order.species)})</li>
-      <li><strong>Listing:</strong> <a href="${listingLink}">${listingLink}</a></li>
+      <li><strong>Listing:</strong> <a href="${escapeHtml(listingLink)}">${escapeHtml(listingLink)}</a></li>
       <li><strong>Price:</strong> ${amountBtc} BTC</li>
-      <li><strong>Transaction:</strong> <a href="${txLink}">${txLink}</a></li>
+      <li><strong>Transaction:</strong> <a href="${escapeHtml(txLink)}">${escapeHtml(txLink)}</a></li>
     </ul>
     <h3>Shipping To</h3>
     <p>${escapeHtml(order.buyer_name)}<br>
@@ -775,7 +825,7 @@ async function sendOrderPaidEmails(env, orderId, txId) {
     <ul>
       <li><strong>Order ID:</strong> ${escapeHtml(order.id)}</li>
       <li><strong>Pay Address:</strong> ${escapeHtml(order.pay_address)}</li>
-      <li><strong>Transaction:</strong> <a href="${txLink}">${txLink}</a></li>
+      <li><strong>Transaction:</strong> <a href="${escapeHtml(txLink)}">${escapeHtml(txLink)}</a></li>
     </ul>
   `;
 
