@@ -93,21 +93,7 @@
     .state-box { text-align: center; padding: 4rem 1rem; color: var(--gray); }
     .state-box p { font-size: 1rem; }
 
-    .load-more-wrap { text-align: center; margin-top: 2rem; }
-    .btn-load-more {
-      padding: 0.75rem 2.5rem;
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      color: var(--text);
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .btn-load-more:hover { border-color: var(--orange); background: #fffaf3; }
-    .btn-load-more:disabled { opacity: 0.5; cursor: not-allowed; }
-    :root[data-theme="dark"] .btn-load-more:hover { background: rgba(247,147,26,0.12); }
+    .load-more-status { text-align: center; padding: 1.5rem 0; color: var(--gray); font-size: 0.9rem; }
     :root[data-theme="dark"] .pet-photo-placeholder { background: #2a2c30; color: #666; }
 
     footer { background: var(--dark); color: #888; text-align: center; padding: 1.5rem 2rem; font-size: 0.85rem; }
@@ -135,9 +121,8 @@
     <div id="petGrid" class="pet-grid"></div>
     <div id="stateBox" class="state-box" style="display:none"></div>
 
-    <div class="load-more-wrap" id="loadMoreWrap" style="display:none">
-      <button class="btn-load-more" id="loadMoreBtn">Load more</button>
-    </div>
+    <div id="scrollSentinel"></div>
+    <div class="load-more-status" id="loadMoreStatus" style="display:none">Loading more&hellip;</div>
   </main>
 
   <footer>
@@ -155,14 +140,15 @@
   </footer>
 
   <script>
-    const grid         = document.getElementById('petGrid');
-    const stateBox     = document.getElementById('stateBox');
-    const countEl      = document.getElementById('listingCount');
-    const loadMoreWrap = document.getElementById('loadMoreWrap');
-    const loadMoreBtn  = document.getElementById('loadMoreBtn');
+    const grid           = document.getElementById('petGrid');
+    const stateBox       = document.getElementById('stateBox');
+    const countEl        = document.getElementById('listingCount');
+    const scrollSentinel = document.getElementById('scrollSentinel');
+    const loadMoreStatus = document.getElementById('loadMoreStatus');
 
     let currentPage = 1;
     let loading     = false;
+    let hasMore     = true;
     let btcPriceUsd = null;
 
     fetch('/api/btc-price').then(r => r.json()).then(d => {
@@ -235,14 +221,14 @@
     async function loadPets(append = false) {
       if (loading) return;
       loading = true;
-      loadMoreBtn.disabled = true;
+      if (append) loadMoreStatus.style.display = '';
 
       if (!append) {
         grid.innerHTML = '';
         stateBox.innerHTML = '<p>Loading&hellip;</p>';
         stateBox.style.display = '';
-        loadMoreWrap.style.display = 'none';
         currentPage = 1;
+        hasMore = true;
       }
 
       try {
@@ -263,13 +249,8 @@
           countEl.textContent = data.total + ' listing' + (data.total === 1 ? '' : 's');
         }
 
-        if (data.hasMore) {
-          currentPage++;
-          loadMoreWrap.style.display = '';
-          loadMoreBtn.disabled = false;
-        } else {
-          loadMoreWrap.style.display = 'none';
-        }
+        hasMore = !!data.hasMore;
+        if (hasMore) currentPage++;
       } catch {
         if (!append) {
           stateBox.innerHTML = '<p>Could not load listings. Please refresh and try again.</p>';
@@ -277,10 +258,14 @@
         }
       } finally {
         loading = false;
+        loadMoreStatus.style.display = 'none';
       }
     }
 
-    loadMoreBtn.addEventListener('click', () => loadPets(true));
+    new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !loading) loadPets(true);
+    }, { rootMargin: '600px 0px' }).observe(scrollSentinel);
+
     loadPets();
   </script>
 
