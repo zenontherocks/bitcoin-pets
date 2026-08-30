@@ -633,7 +633,21 @@ async function handlePbtDebug(request, env, url) {
     vaccineSnippets.push(html.slice(Math.max(0, vm.index - 250), vm.index + 150));
   }
 
-  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags, dewormSnippets, vaccineSnippets });
+  // The above imgTags scan caps at 15 raw <img> tags, which can be entirely
+  // eaten up by site-chrome icons (logo, search, avatar, vaccine icons)
+  // before ever reaching further photo-gallery markup. Search the whole
+  // page for every occurrence of the photo-hosting domain instead, so we
+  // can see the real photo count and the exact markup around each one
+  // (plain <img src>, a lazy-loaded data-src, srcset, or a JS-embedded
+  // gallery array) regardless of where in the page it falls.
+  const s3Snippets = [];
+  const s3Re = /pbt-upload-production\.s3[^"'\s)]*/g;
+  let s3m;
+  while ((s3m = s3Re.exec(html)) !== null && s3Snippets.length < 30) {
+    s3Snippets.push(html.slice(Math.max(0, s3m.index - 80), s3m.index + s3m[0].length + 20));
+  }
+
+  return json({ pbt_url: pet.pbt_url, html_length: html.length, sexSnippets, imgTags, dewormSnippets, vaccineSnippets, s3_occurrence_count: s3Snippets.length, s3Snippets });
 }
 
 // TEMPORARY debug route — runs the PBT sync immediately (instead of waiting
