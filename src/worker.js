@@ -965,16 +965,24 @@ async function syncPbtListings(env) {
   const allRows = await env.DB.prepare('SELECT pbt_id FROM pets').all();
   const existingIds = new Set((allRows.results || []).map(r => r.pbt_id));
 
-  for (const { id, slug, price_usd } of listings) {
+  // Batch every existing-listing price update into a single subrequest
+  // instead of one D1 call each — with several hundred listings synced
+  // every 30 minutes, that alone was consuming most of the Worker's
+  // per-invocation subrequest budget before the backfill loop below (which
+  // needs its own fetch + several D1 calls per candidate) even got a
+  // chance to run, silently stalling photo/breed/gender backfill for most
+  // candidates ("Too many subrequests by single Worker invocation").
+  const priceUpdateStmts = listings
+    .filter(l => existingIds.has(l.id) && l.price_usd && l.price_usd > 0)
+    .map(l => env.DB.prepare(
+      "UPDATE pets SET price_usd=?, status = CASE WHEN status = 'ended' THEN 'available' ELSE status END, updated_at=datetime('now') WHERE pbt_id=?"
+    ).bind(l.price_usd, l.id));
+  if (priceUpdateStmts.length) {
+    try { await env.DB.batch(priceUpdateStmts); } catch { /* ignore */ }
+  }
+
+  for (const { id, slug } of listings) {
     if (existingIds.has(id)) {
-      // Already in DB — update price from browse page if we got one
-      if (price_usd && price_usd > 0) {
-        try {
-          await env.DB.prepare(
-            "UPDATE pets SET price_usd=?, status = CASE WHEN status = 'ended' THEN 'available' ELSE status END, updated_at=datetime('now') WHERE pbt_id=?"
-          ).bind(price_usd, id).run();
-        } catch { /* ignore */ }
-      }
       // Re-fetch detail page to backfill missing fields/photos
       if (backfillIds.has(id)) {
         stats.backfill_attempted++;
@@ -991,33 +999,40 @@ async function syncPbtListings(env) {
             }
             const petRow = await env.DB.prepare('SELECT id FROM pets WHERE pbt_id=?').bind(id).first();
             if (petRow) {
-              // Fill in blanks only — don't overwrite existing values
-              await env.DB.prepare(`
-                UPDATE pets SET
-                  breed         = CASE WHEN breed IS NULL AND ? IS NOT NULL THEN ? ELSE breed END,
-                  gender        = CASE WHEN gender = 'unknown' AND ? != 'unknown' THEN ? ELSE gender END,
-                  pbt_seller    = COALESCE(pbt_seller, ?),
-                  microchip_id  = COALESCE(microchip_id, ?),
-                  updated_at    = datetime('now')
-                WHERE id = ?
-              `).bind(
-                detail.breed, detail.breed,
-                detail.gender, detail.gender,
-                detail.pbt_seller,
-                detail.microchip_id,
-                petRow.id
-              ).run();
               // Only insert photos if this pet currently has none
               const photoCount = await env.DB.prepare(
                 'SELECT COUNT(*) AS n FROM pet_pictures WHERE pet_id=?'
               ).bind(petRow.id).first();
+
+              // Fill in blanks only — don't overwrite existing values.
+              // Bundled with any photo inserts into one batch call.
+              const backfillStmts = [
+                env.DB.prepare(`
+                  UPDATE pets SET
+                    breed         = CASE WHEN breed IS NULL AND ? IS NOT NULL THEN ? ELSE breed END,
+                    gender        = CASE WHEN gender = 'unknown' AND ? != 'unknown' THEN ? ELSE gender END,
+                    pbt_seller    = COALESCE(pbt_seller, ?),
+                    microchip_id  = COALESCE(microchip_id, ?),
+                    updated_at    = datetime('now')
+                  WHERE id = ?
+                `).bind(
+                  detail.breed, detail.breed,
+                  detail.gender, detail.gender,
+                  detail.pbt_seller,
+                  detail.microchip_id,
+                  petRow.id
+                ),
+              ];
               if ((photoCount?.n ?? 0) === 0 && detail.images?.length) {
                 for (let i = 0; i < detail.images.length; i++) {
-                  await env.DB.prepare(
-                    'INSERT OR IGNORE INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
-                  ).bind(crypto.randomUUID(), petRow.id, detail.images[i], i === 0 ? 1 : 0).run();
+                  backfillStmts.push(
+                    env.DB.prepare(
+                      'INSERT OR IGNORE INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
+                    ).bind(crypto.randomUUID(), petRow.id, detail.images[i], i === 0 ? 1 : 0)
+                  );
                 }
               }
+              await env.DB.batch(backfillStmts);
             }
           } else {
             stats.backfill_err++;
@@ -1218,24 +1233,29 @@ async function syncPbtListings_upsert(env, listing) {
     return;
   }
 
-  // New listing: insert pet + pictures
+  // New listing: insert pet + pictures in one batch (one subrequest)
+  // instead of one D1 call per photo.
   const id = crypto.randomUUID();
-  await env.DB.prepare(`
-    INSERT INTO pets (id, pbt_id, pbt_url, name, species, breed, date_of_birth, weight_lbs,
-      gender, color, vaccinations, registry_name, microchip_id, price_usd, pbt_seller)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    id, listing.pbt_id, listing.pbt_url, listing.name, listing.species,
-    listing.breed, listing.date_of_birth, listing.weight_lbs,
-    listing.gender, listing.color, listing.vaccinations,
-    listing.registry_name, listing.microchip_id, listing.price_usd, listing.pbt_seller || null
-  ).run();
-
+  const stmts = [
+    env.DB.prepare(`
+      INSERT INTO pets (id, pbt_id, pbt_url, name, species, breed, date_of_birth, weight_lbs,
+        gender, color, vaccinations, registry_name, microchip_id, price_usd, pbt_seller)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id, listing.pbt_id, listing.pbt_url, listing.name, listing.species,
+      listing.breed, listing.date_of_birth, listing.weight_lbs,
+      listing.gender, listing.color, listing.vaccinations,
+      listing.registry_name, listing.microchip_id, listing.price_usd, listing.pbt_seller || null
+    ),
+  ];
   for (let i = 0; i < listing.images.length; i++) {
-    await env.DB.prepare(
-      'INSERT INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
-    ).bind(crypto.randomUUID(), id, listing.images[i], i === 0 ? 1 : 0).run();
+    stmts.push(
+      env.DB.prepare(
+        'INSERT INTO pet_pictures (id, pet_id, url, is_primary) VALUES (?, ?, ?, ?)'
+      ).bind(crypto.randomUUID(), id, listing.images[i], i === 0 ? 1 : 0)
+    );
   }
+  await env.DB.batch(stmts);
 }
 
 // ── PBT parsing helpers ───────────────────────────────────────────────────────
