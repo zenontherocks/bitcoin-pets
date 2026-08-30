@@ -10,3 +10,10 @@ database_id = "20b9a4ee-5b6c-4aea-bb78-709b63df26e9"
 
 [triggers]
 crons = ["*/5 * * * *", "*/30 * * * *"]
+
+# The PBT sync cron does one D1/fetch call per listing across hundreds of
+# listings every 30 minutes; the platform default was getting hit partway
+# through, silently stalling photo/breed/gender backfill for most listings.
+# Raised well above what's actually needed for headroom.
+[limits]
+subrequests = 50000
