@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS pets (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Every browse/sync query filters on status ('available'/'pending'); without
+-- this, each one is a full table scan.
+CREATE INDEX IF NOT EXISTS idx_pets_status ON pets(status);
 
 -- Pet pictures: one pet can have many photos; one is flagged as primary.
 -- url stores PBT S3 URLs directly (public CDN, no proxy needed).
@@ -40,6 +43,10 @@ CREATE TABLE IF NOT EXISTS pet_pictures (
   is_primary INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- pet_id had no index at all, so every per-pet photo lookup/count (including
+-- the PBT sync's per-listing photo-count check, run on every cron cycle)
+-- was scanning the entire table.
+CREATE INDEX IF NOT EXISTS idx_pet_pictures_pet_id ON pet_pictures(pet_id);
 
 -- Orders: buyer submits contact info and gets a Bitcoin invoice.
 -- The platform pays PBT and ships to the buyer upon payment confirmation.
@@ -65,6 +72,10 @@ CREATE TABLE IF NOT EXISTS orders (
   buyer_zip       TEXT NOT NULL,
   buyer_country   TEXT NOT NULL DEFAULT 'US'
 );
+-- Speeds up the 5-minute expire/confirm-payments cron's status+expiry scans.
+CREATE INDEX IF NOT EXISTS idx_orders_status_expires ON orders(status, expires_at);
+-- Speeds up looking up a pet's active order (e.g. on the pet detail page).
+CREATE INDEX IF NOT EXISTS idx_orders_pet_id ON orders(pet_id);
 
 -- Seller blacklist: PBT seller usernames whose listings should not appear on the site.
 CREATE TABLE IF NOT EXISTS seller_blacklist (
